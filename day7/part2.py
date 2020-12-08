@@ -33,7 +33,7 @@ def main():
             for _, content_bag in content_tuples:
                 get_bag(content_bag).ancestors.add(color)
 
-    print(get_total_count(get_bag('shiny gold')))
+    print(get_total_count(get_bag('shiny gold')) - 1)
 
 
 def get_total_count(bag):
