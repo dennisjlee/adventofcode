@@ -1,5 +1,4 @@
 from collections import defaultdict
-import re
 import sys
 
 
@@ -7,15 +6,19 @@ def main():
     with open(sys.argv[1]) as f:
         starting_numbers = [int(s) for s in f.readline().split(',')]
 
-    part1(starting_numbers)
-    part2(starting_numbers)
+    v3(starting_numbers, 2020)
+    v3(starting_numbers, 30000000)
 
 
-def part1(starting_numbers):
+# note that v1, v2, v3 all do the same things, just at various levels of
+# refinement / performance
+
+
+def v1(starting_numbers, stop_index):
     last_seen_indexes = defaultdict(list)
     numbers = []
     n = -1
-    for i in range(2020):
+    for i in range(stop_index):
         if i < len(starting_numbers):
             n = starting_numbers[i]
             numbers.append(n)
@@ -33,10 +36,10 @@ def part1(starting_numbers):
     print(n)
 
 
-def part2(starting_numbers):
+def v2(starting_numbers, stop_index):
     last_seen_indexes = {}
     n = -1
-    for i in range(30_000_000):
+    for i in range(stop_index):
         if i < len(starting_numbers):
             n = starting_numbers[i]
             last_seen_indexes[n] = (i, None)
@@ -49,6 +52,19 @@ def part2(starting_numbers):
 
             last, prev = last_seen_indexes.get(n, (None, None))
             last_seen_indexes[n] = (i, last)
+    print(n)
+
+
+def v3(starting_numbers, stop_index):
+    last_seen_indexes = {n: i for i, n in enumerate(starting_numbers[:-1])}
+    prev_n = starting_numbers[-1]
+    for i in range(len(starting_numbers), stop_index):
+        if prev_n in last_seen_indexes:
+            n = i - 1 - last_seen_indexes[prev_n]
+        else:
+            n = 0
+        last_seen_indexes[prev_n] = i - 1
+        prev_n = n
     print(n)
 
 
