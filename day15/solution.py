@@ -6,8 +6,8 @@ def main():
     with open(sys.argv[1]) as f:
         starting_numbers = [int(s) for s in f.readline().split(',')]
 
-    v3(starting_numbers, 2020)
-    v3(starting_numbers, 30000000)
+    v4(starting_numbers, 2020)
+    v4(starting_numbers, 30000000)
 
 
 # note that v1, v2, v3 all do the same things, just at various levels of
@@ -58,11 +58,25 @@ def v2(starting_numbers, stop_index):
 def v3(starting_numbers, stop_index):
     last_seen_indexes = {n: i for i, n in enumerate(starting_numbers[:-1])}
     prev_n = starting_numbers[-1]
+    n = -1
     for i in range(len(starting_numbers), stop_index):
-        if prev_n in last_seen_indexes:
-            n = i - 1 - last_seen_indexes[prev_n]
-        else:
-            n = 0
+        prev_index = last_seen_indexes.get(prev_n)
+        n = 0 if prev_index is None else (i - 1 - prev_index)
+        last_seen_indexes[prev_n] = i - 1
+        prev_n = n
+    print(n)
+
+
+def v4(starting_numbers, stop_index):
+    """version using a list instead of dict - trade space for time"""
+    last_seen_indexes = [None] * stop_index
+    for i, n in enumerate(starting_numbers[:-1]):
+        last_seen_indexes[n] = i
+    prev_n = starting_numbers[-1]
+    n = -1
+    for i in range(len(starting_numbers), stop_index):
+        prev_index = last_seen_indexes[prev_n]
+        n = 0 if prev_index is None else (i - 1 - prev_index)
         last_seen_indexes[prev_n] = i - 1
         prev_n = n
     print(n)
