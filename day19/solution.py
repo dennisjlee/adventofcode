@@ -3,6 +3,7 @@ import sys
 
 RULE_PARSER = re.compile(r'(\d+): (?:"(\w)")?(\d.*)?')
 
+
 class Rule:
     def __init__(self, line):
         match = RULE_PARSER.match(line)
@@ -48,10 +49,10 @@ class Rule:
             next_indexes = {start}
             for rule_index in option:
                 rule_matches = set()
-                subrule = indexed_rules[rule_index]
+                sub_rule = indexed_rules[rule_index]
                 for start_index in next_indexes:
                     rule_matches |= set(
-                        subrule.possible_matches(indexed_rules, message, start_index))
+                        sub_rule.possible_matches(indexed_rules, message, start_index))
                 next_indexes = rule_matches
                 if not next_indexes:
                     break
@@ -62,22 +63,12 @@ class Rule:
                 continue
 
 
-
-
 def main():
     with open(sys.argv[1]) as f:
         sections = f.read().split('\n\n')
 
     rule_lines = sections[0].strip().split('\n')
     messages = sections[1].strip().split('\n')
-
-    # test
-    test_rule_lines = [
-        '0: 1 2',
-        '1: "a"',
-        '2: 1 3 | 3 1',
-        '3: "b"'
-    ]
 
     indexed_rules = {}
     for line in rule_lines:
@@ -99,8 +90,6 @@ def main():
         1 for message in messages
         if rule0.matches_whole_string(indexed_rules2, message))
     print(match_count)
-
-
 
 
 if __name__ == '__main__':
