@@ -9,27 +9,16 @@ OPERATORS = {
     '*': mul
 }
 TOKENIZER = re.compile(r'(\(*)(\d+)(\)*)')
+PAREN_GROUP = re.compile(r'\(([^()]*)\)')
 
 
 def main():
     with open(sys.argv[1]) as f:
         expressions = [l.strip() for l in f]
 
-    print(parse_to_tree('1 + (2 * 3) + (4 * (5 + 6))', True), 51)
-    print(parse_to_tree('2 * 3 + (4 * 5)', True), 46)
-    print(parse_to_tree('5 + (8 * 3 + 9 + 3 * 4 * 3)', True), 1445)
-    print(parse_to_tree('5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))', True), 669060)
-    print(parse_to_tree('((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2', True), 23340)
-    # print(parse_to_tree('(1 + 2) * 3 + 4', True))
-    # print(parse_to_tree('1 + (2 * 3) * 4 + 5', True))
-    # print(parse_to_tree('((7 + 9 + 5 + 7) * 3 + (5 * 3 * 6 * 5 + 6) + (9 * 4 + 9 * 6 + 9))', True))
-    # print(parse_to_tree('1 + 2 * (2 * (3 + 4) + (5 * 6)) * 8 + 9', True))
-    # print(parse_to_tree('9 + 2 * ((7 + 9 + 5 + 7) * 3 + (5 * 3 * 6 * 5 + 6) + (9 * 4 + 9 * 6 + 9)) * 8', True))
-    print(parse_to_tree('9 + 2 * ((7 + 9 + 5 + 7) * 3 + (5 * 3 * 6 * 5 + 6) + (9 * 4 + 9 * 6 + 9)) * 8 + 5', True), 11002992)
-
-    # part1_orig(expressions)
-    # part1(expressions)
-    # part2(expressions)
+    part1_orig(expressions)
+    part1(expressions)
+    part2(expressions)
 
 
 def part1_orig(expressions):
@@ -37,11 +26,11 @@ def part1_orig(expressions):
 
 
 def part1(expressions):
-    print(sum(parse_to_tree(expression) for expression in expressions))
+    print(sum(parse_to_tree2(expression) for expression in expressions))
 
 
 def part2(expressions):
-    print(sum(parse_to_tree(expression, True) for expression in expressions))
+    print(sum(parse_to_tree2(expression, True) for expression in expressions))
 
 
 class Node:
@@ -101,8 +90,6 @@ class Node:
             self.left = number
         else:
             self.right = number
-            if self.operator == '+' and self.plus_takes_precedence:
-                return self.create_parent()
         return self
 
     def create_parent(self):
@@ -128,7 +115,7 @@ class Node:
             assert False, "Couldn't find old child"
 
 
-def parse_to_tree(expression, plus_takes_precedence=False):
+def parse_to_tree1(expression, plus_takes_precedence=False):
     root = Node(plus_takes_precedence)
     curr = root
     for token in expression.split(' '):
@@ -160,6 +147,37 @@ def parse_to_tree(expression, plus_takes_precedence=False):
                     curr.closed = True
 
     return root.evaluate()
+
+
+def evaluate_tree(expression, plus_takes_precedence=False):
+    root = Node(plus_takes_precedence)
+    curr = root
+    for token in expression.split(' '):
+        if token in OPERATORS:
+            new_node = curr.set_operator(token)
+            if new_node.parent is None:
+                root = new_node
+            curr = new_node
+        else:
+            number = int(token)
+
+            new_node = curr.add_number(number)
+            if new_node.parent is None:
+                root = new_node
+            curr = new_node
+
+    return root.evaluate()
+
+
+def parse_to_tree2(expression, plus_takes_precedence=False):
+    match = PAREN_GROUP.search(expression)
+    while match:
+        inner_expression = match.group(1)
+        inner_value = evaluate_tree(inner_expression, plus_takes_precedence)
+        expression = f'{expression[:match.start()]}{inner_value}{expression[match.end():]}'
+        match = PAREN_GROUP.search(expression)
+
+    return evaluate_tree(expression, plus_takes_precedence)
 
 
 def eval_part1(expression):
