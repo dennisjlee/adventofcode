@@ -21,14 +21,14 @@ def part1(sections):
 
 
 def iterate_decks_basic(deck1, deck2):
-    card1 = deck1.popleft()
-    card2 = deck2.popleft()
+    card1 = deck1[0]
+    card2 = deck2[0]
     if card1 > card2:
-        deck1.append(card1)
-        deck1.append(card2)
+        deck1.rotate(-1)
+        deck1.append(deck2.popleft())
     elif card2 > card1:
-        deck2.append(card2)
-        deck2.append(card1)
+        deck2.rotate(-1)
+        deck2.append(deck1.popleft())
     else:
         assert False, "Rules don't allow for ties!"
 
@@ -54,25 +54,24 @@ def recursive_combat(deck1, deck2):
 
 
 def iterate_decks_recursive(deck1, deck2):
-    card1 = deck1.popleft()
-    card2 = deck2.popleft()
-    if len(deck1) >= card1 and len(deck2) >= card2:
-        winner = recursive_combat(deque(itertools.islice(deck1, 0, card1)),
-                                  deque(itertools.islice(deck2, 0, card2)))
-        if winner == 1:
-            deck1.append(card1)
-            deck1.append(card2)
-        else:
-            deck2.append(card2)
-            deck2.append(card1)
+    card1 = deck1[0]
+    card2 = deck2[0]
+    if len(deck1) > card1 and len(deck2) > card2:
+        winner = recursive_combat(deque(itertools.islice(deck1, 1, card1+1)),
+                                  deque(itertools.islice(deck2, 1, card2+1)))
     elif card1 > card2:
-        deck1.append(card1)
-        deck1.append(card2)
+        winner = 1
     elif card2 > card1:
-        deck2.append(card2)
-        deck2.append(card1)
+        winner = 2
     else:
         assert False, "Rules don't allow for ties!"
+
+    if winner == 1:
+        deck1.rotate(-1)
+        deck1.append(deck2.popleft())
+    else:
+        deck2.rotate(-1)
+        deck2.append(deck1.popleft())
 
 
 def parse_deck(section: str):
