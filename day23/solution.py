@@ -60,6 +60,8 @@ def part2(initial_input):
     current = first
     for i in range(10_000_000):
         current = iterate(current, indexed_nodes, 1_000_000)
+        if i % 100_000 == 0:
+            print('iteration', i)
 
     next_cup = indexed_nodes[1].next
     next_next_cup = next_cup.next
@@ -79,13 +81,11 @@ def get_output(node1):
 
 
 def iterate(current, indexed_nodes, max_val):
-    removed_cups = [
-        current.next,
-        current.next.next,
-        current.next.next.next
-    ]
-    new_next = removed_cups[-1].next
-    current.set_next(new_next)
+    first_removed = current.next
+    second_removed = first_removed.next
+    third_removed = second_removed.next
+    removed_cups = {first_removed, second_removed, third_removed}
+    current.set_next(third_removed.next)
 
     current_label = current.label
     while True:
@@ -96,8 +96,8 @@ def iterate(current, indexed_nodes, max_val):
             break
 
     old_destination_next = destination.next
-    destination.set_next(removed_cups[0])
-    removed_cups[-1].set_next(old_destination_next)
+    destination.set_next(first_removed)
+    third_removed.set_next(old_destination_next)
     return current.next
 
 
