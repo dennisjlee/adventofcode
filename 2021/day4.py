@@ -7,7 +7,11 @@ class BoardState:
             [int(s) for s in line.strip().split()]
             for line in lines
         ]
-        self.numbers = {n for row in self.board for n in row}
+        self.reverse_board = {
+            self.board[i][j]: (i, j)
+            for i in range(5)
+            for j in range(5)
+        }
         self.marked = [
             [False for _ in range(5)]
             for __ in range(5)
@@ -15,19 +19,16 @@ class BoardState:
         self.won = False
 
     def mark(self, n):
-        if n not in self.numbers:
+        if n not in self.reverse_board:
             return False
-        for i in range(5):
-            for j in range(5):
-                if self.board[i][j] == n:
-                    self.marked[i][j] = True
+        i, j = self.reverse_board[n]
+        self.marked[i][j] = True
 
-                    self.won = (
-                            all(self.marked[ii][j] for ii in range(5))
-                            or all(self.marked[i][jj] for jj in range(5))
-                    )
-                    return self.won
-        return False
+        self.won = (
+                all(self.marked[ii][j] for ii in range(5))
+                or all(self.marked[i][jj] for jj in range(5))
+        )
+        return self.won
 
     def unmarked_numbers(self):
         for i in range(5):
@@ -46,30 +47,18 @@ def main():
             board = BoardState(lines[i + 1:i + 6])
             boards.add(board)
 
-    print(find_bingo(numbers, boards))
-
-    print(find_last_bingo(numbers, boards))
-
-
-def find_bingo(numbers, boards):
-    for n in numbers:
-        for b in boards:
-            is_bingo = b.mark(n)
-            if is_bingo:
-                return sum(b.unmarked_numbers()) * n
+    bingo_scores = list(find_bingos(numbers, boards))
+    print(bingo_scores[0])
+    print(bingo_scores[-1])
 
 
-def find_last_bingo(numbers, boards):
-    bingo_count = 0
+def find_bingos(numbers, boards):
     for n in numbers:
         for b in boards:
             if b.won:
                 continue
-            is_bingo = b.mark(n)
-            if is_bingo:
-                bingo_count += 1
-                if bingo_count == len(boards) - 1:
-                    return sum(b.unmarked_numbers()) * n
+            if b.mark(n):
+                yield sum(b.unmarked_numbers()) * n
 
 
 if __name__ == '__main__':
