@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import defaultdict
 import re
 import sys
 
@@ -40,7 +41,7 @@ def main():
 
 
 def get_high_score(num_players, last_marble_value):
-    scores = [0 for _ in range(num_players)]
+    scores = defaultdict(int)
     current_marble = Marble(0)
     player_index = 0
     for marble_value in range(1, last_marble_value + 1):
@@ -55,7 +56,7 @@ def get_high_score(num_players, last_marble_value):
             current_marble.next.insert_after(new_marble)
             current_marble = new_marble
 
-    return max(scores)
+    return max(scores.values())
 
 
 if __name__ == '__main__':
