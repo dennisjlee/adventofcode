@@ -17,7 +17,6 @@ def main():
     # too slow by far!
     # part2_direct(grid)
 
-    # still kinda slow
     part2_dynamic(grid)
 
 
@@ -60,23 +59,30 @@ def part2_direct(grid: list[list[int]]):
 
 
 def part2_dynamic(grid: list[list[int]]):
-    segment_totals: dict[Segment, int] = {}
+    # each location (x, y) stores the running total of the horizontal segment from (0, y) to (x, y)
+    horizontal_segments = [
+        [0] * 300
+        for _ in range(300)
+    ]
+    # each location (x, y) stores the running total of the vertical segment from (x, 0) to (x, y)
+    vertical_segments = [
+        [0] * 300
+        for _ in range(300)
+    ]
 
     # row segments
-    print('Computing row segments')
     for y in range(300):
         running_total = 0
         for x in range(300):
             running_total += grid[y][x]
-            segment_totals[Segment(0, y, x, y)] = running_total
+            horizontal_segments[y][x] = running_total
 
     # column segments
-    print('Computing column segments')
     for x in range(300):
         running_total = 0
         for y in range(300):
             running_total += grid[y][x]
-            segment_totals[Segment(x, 0, x, y)] = running_total
+            vertical_segments[y][x] = running_total
 
     best_total = -math.inf
     best_square = None
@@ -93,7 +99,6 @@ def part2_dynamic(grid: list[list[int]]):
                 best_square = Square(x, y, 1)
 
     for size in range(2, 301):
-        print('Computing subtotals for size', size)
         n = 301 - size
         next_subtotals: list[list[Optional[int]]] = [
             [None] * n
@@ -105,8 +110,8 @@ def part2_dynamic(grid: list[list[int]]):
                 end_y = y + size - 1
                 if x == 0 and y == 0:
                     smaller_square_total = subtotals[0][0]
-                    last_column_total = segment_totals[Segment(end_x, 0, end_x, end_y)]
-                    last_row_total = segment_totals[Segment(0, end_y, end_x, end_y)]
+                    last_column_total = vertical_segments[end_y][end_x]
+                    last_row_total = horizontal_segments[end_y][end_x]
                     subtotal = (
                             smaller_square_total +
                             last_row_total +
@@ -115,20 +120,18 @@ def part2_dynamic(grid: list[list[int]]):
                     )
                 elif x == 0:
                     square_above_total = next_subtotals[y - 1][0]
-                    prev_top_row_total = segment_totals[Segment(0, y - 1, end_x, y - 1)]
-                    bottom_row_total = segment_totals[Segment(0, end_y, end_x, end_y)]
+                    prev_top_row_total = horizontal_segments[y - 1][end_x]
+                    bottom_row_total = horizontal_segments[end_y][end_x]
                     subtotal = square_above_total - prev_top_row_total + bottom_row_total
                 elif y == 0:
                     square_left_total = next_subtotals[0][x - 1]
-                    prev_left_col_total = segment_totals[Segment(x - 1, 0, x - 1, end_y)]
-                    right_col_total = segment_totals[Segment(end_x, 0, end_x, end_y)]
+                    prev_left_col_total = vertical_segments[end_y][x - 1]
+                    right_col_total = vertical_segments[end_y][end_x]
                     subtotal = square_left_total - prev_left_col_total + right_col_total
                 else:
                     square_left_total = next_subtotals[y][x - 1]
-                    prev_left_col_total = segment_totals[Segment(x - 1, 0, x - 1, end_y)] - \
-                                          segment_totals[Segment(x - 1, 0, x - 1, y - 1)]
-                    right_col_total = segment_totals[Segment(end_x, 0, end_x, end_y)] - \
-                                      segment_totals[Segment(end_x, 0, end_x, y - 1)]
+                    prev_left_col_total = vertical_segments[end_y][x - 1] - vertical_segments[y - 1][x - 1]
+                    right_col_total = vertical_segments[end_y][end_x] - vertical_segments[y - 1][end_x]
                     subtotal = square_left_total - prev_left_col_total + right_col_total
 
                 next_subtotals[y][x] = subtotal
