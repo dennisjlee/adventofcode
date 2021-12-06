@@ -1,5 +1,5 @@
 import sys
-from collections import defaultdict
+from collections import Counter
 
 
 def main():
@@ -21,12 +21,10 @@ def main():
     print(len(fish))
 
     # part 2
-    fish_counts = defaultdict(int)
-    for f in orig_fish:
-        fish_counts[f] += 1
+    fish_counts = Counter(orig_fish)
 
     for _ in range(256):
-        new_fish_counts = defaultdict(int)
+        new_fish_counts = Counter()
         for f, count in fish_counts.items():
             if f == 0:
                 new_fish_counts[6] += count
