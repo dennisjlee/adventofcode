@@ -17,7 +17,7 @@ def main():
     # too slow by far!
     # part2_direct(grid)
 
-    # Dynamic programming version is currently buggy - runs a long time, might be infinite loop
+    # still kinda slow
     part2_dynamic(grid)
 
 
@@ -61,7 +61,6 @@ def part2_direct(grid: list[list[int]]):
 
 def part2_dynamic(grid: list[list[int]]):
     segment_totals: dict[Segment, int] = {}
-    subtotals: dict[Square, int] = {}
 
     # row segments
     print('Computing row segments')
@@ -79,50 +78,65 @@ def part2_dynamic(grid: list[list[int]]):
             running_total += grid[y][x]
             segment_totals[Segment(x, 0, x, y)] = running_total
 
+    best_total = -math.inf
+    best_square = None
+    subtotals: list[list[Optional[int]]] = [
+        [None] * 300
+        for _ in range(300)
+    ]
     for y in range(300):
         for x in range(300):
-            subtotals[Square(x, y, 1)] = grid[y][x]
+            subtotal = grid[y][x]
+            subtotals[y][x] = subtotal
+            if subtotal > best_total:
+                best_total = subtotal
+                best_square = Square(x, y, 1)
 
     for size in range(2, 301):
         print('Computing subtotals for size', size)
-        for y in range(301 - size):
-            for x in range(301 - size):
+        n = 301 - size
+        next_subtotals: list[list[Optional[int]]] = [
+            [None] * n
+            for _ in range(n)
+        ]
+        for y in range(n):
+            for x in range(n):
                 end_x = x + size - 1
                 end_y = y + size - 1
                 if x == 0 and y == 0:
-                    smaller_square_total = subtotals[Square(0, 0, size - 1)]
+                    smaller_square_total = subtotals[0][0]
                     last_column_total = segment_totals[Segment(end_x, 0, end_x, end_y)]
                     last_row_total = segment_totals[Segment(0, end_y, end_x, end_y)]
-                    subtotals[Square(x, y, size)] = (
+                    subtotal = (
                             smaller_square_total +
                             last_row_total +
                             last_column_total -
                             grid[end_y][end_x]
                     )
                 elif x == 0:
-                    square_above_total = subtotals[Square(0, y - 1, size)]
+                    square_above_total = next_subtotals[y - 1][0]
                     prev_top_row_total = segment_totals[Segment(0, y - 1, end_x, y - 1)]
                     bottom_row_total = segment_totals[Segment(0, end_y, end_x, end_y)]
-                    subtotals[Square(x, y, size)] = square_above_total - prev_top_row_total + bottom_row_total
+                    subtotal = square_above_total - prev_top_row_total + bottom_row_total
                 elif y == 0:
-                    square_left_total = subtotals[Square(x - 1, 0, size)]
+                    square_left_total = next_subtotals[0][x - 1]
                     prev_left_col_total = segment_totals[Segment(x - 1, 0, x - 1, end_y)]
                     right_col_total = segment_totals[Segment(end_x, 0, end_x, end_y)]
-                    subtotals[Square(x, y, size)] = square_left_total - prev_left_col_total + right_col_total
+                    subtotal = square_left_total - prev_left_col_total + right_col_total
                 else:
-                    square_left_total = subtotals[Square(x - 1, y, size)]
+                    square_left_total = next_subtotals[y][x - 1]
                     prev_left_col_total = segment_totals[Segment(x - 1, 0, x - 1, end_y)] - \
                                           segment_totals[Segment(x - 1, 0, x - 1, y - 1)]
                     right_col_total = segment_totals[Segment(end_x, 0, end_x, end_y)] - \
                                       segment_totals[Segment(end_x, 0, end_x, y - 1)]
-                    subtotals[Square(x, y, size)] = square_left_total - prev_left_col_total + right_col_total
+                    subtotal = square_left_total - prev_left_col_total + right_col_total
 
-    best_total = -math.inf
-    best_square = None
-    for square, subtotal in subtotals.items():
-        if subtotal > best_total:
-            best_total = subtotal
-            best_square = square
+                next_subtotals[y][x] = subtotal
+                if subtotal > best_total:
+                    best_total = subtotal
+                    best_square = Square(x, y, size)
+
+        subtotals = next_subtotals
 
     print(f'{best_square.start_x + 1},{best_square.start_y + 1},{best_square.size}')
 
