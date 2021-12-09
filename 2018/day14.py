@@ -5,19 +5,35 @@ import math
 from abc import abstractmethod
 from collections import deque
 from typing import Sequence, overload, Iterable, MutableSequence
+import time
 
 INPUT = '157901'
 
-MAX_SIZE = 10_000_000
+MAX_SIZE = math.inf
+# MAX_SIZE = 10_000_000
+PRINT = False
 
 
 def main():
-    # print(part1(INPUT))
-    print(part2(INPUT))
-    # print(part2_numeric(INPUT))
-    # print(part2_list(INPUT))
-    # print(part2_deque(INPUT))
-    # print(part2_paged(INPUT))
+    start = time.perf_counter()
+    try:
+        # print(part1(INPUT))
+        # print(part2('51589'))
+        # print(part2('01245'))
+        # print(part2('92510'))
+        # print(part2('59414'))
+        # print(part2('901'))
+        print(part2(INPUT))
+        print(part2_tweak(INPUT))
+        # print(part2_check_less(INPUT))
+        #print(part2_reverse(INPUT))
+        # print(part2_numeric(INPUT))
+        # print(part2_list(INPUT))
+        # print(part2_deque(INPUT))
+        # print(part2_paged(INPUT))
+    finally:
+        end = time.perf_counter()
+        print(f'Elapsed time: {end - start}s')
 
 
 def part1(target: str):
@@ -54,6 +70,15 @@ def array_has_suffix2(arr: Sequence[int], arr_len: int, suffix: Sequence[int], s
     return True
 
 
+def array_has_suffix3(arr: Sequence[int], arr_len: int, suffix: Sequence[int], suffix_len: int):
+    if arr_len < suffix_len:
+        return False
+    for i in range(-1, -suffix_len - 1, -1):
+        if arr[i] != suffix[i]:
+            return False
+    return True
+
+
 def part2_list(target: str):
     state = [3, 7]
     i = 0
@@ -83,17 +108,171 @@ def part2(target: str):
     target_array = bytearray([int(c) for c in target])
     target_len = len(target_array)
     size = len(state)
-    while not state.endswith(target_array) and size < MAX_SIZE:
+    while size < MAX_SIZE:
+        if PRINT and size % 1_000_000 == 0:
+            print(size)
+        score1 = state[i]
+        score2 = state[j]
+        next_num = score1 + score2
+        if next_num >= 10:
+            size += 2
+            state.append(1)
+            if state.endswith(target_array):
+                break
+            state.append(next_num % 10)
+            if state.endswith(target_array):
+                break
+        else:
+            size += 1
+            state.append(next_num)
+            if state.endswith(target_array):
+                break
+
+        next_index = i + 1 + score1
+        if next_index >= size:
+            next_index = next_index % size
+        i = next_index
+
+        next_index = j + 1 + score2
+        if next_index >= size:
+            next_index = next_index % size
+        j = next_index
+        # i = (i + 1 + score1) % size
+        # j = (j + 1 + score2) % size
+
+    return len(state) - target_len
+
+
+def part2_tweak(target: str):
+    state = bytearray([3, 7])
+    i = 0
+    j = 1
+    target_array = bytearray([int(c) for c in target])
+    target_len = len(target_array)
+    size = len(state)
+    second_last = -1
+    last = -1
+    while size < MAX_SIZE:
+        if PRINT and size % 1_000_000 == 0:
+            print(size)
+        score1 = state[i]
+        score2 = state[j]
+        next_num = score1 + score2
+        if next_num >= 10:
+            size += 2
+            state.append(1)
+            if second_last == 9 and last == 0 and state.endswith(target_array):
+                break
+            state.append(next_num - 10)
+            second_last = last
+            last = next_num - 10
+        else:
+            size += 1
+            state.append(next_num)
+            if second_last == 9 and last == 0 and next_num == 1 and state.endswith(target_array):
+                break
+            second_last = last
+            last = next_num
+
+        next_index = i + 1 + score1
+        if next_index >= size:
+            next_index = next_index % size
+        i = next_index
+
+        next_index = j + 1 + score2
+        if next_index >= size:
+            next_index = next_index % size
+        j = next_index
+        # i = (i + 1 + score1) % size
+        # j = (j + 1 + score2) % size
+
+    return len(state) - target_len
+
+
+def append_and_check(arr: bytearray, target_array: bytearray, last_num, next_num):
+    arr.append(next_num)
+    return last_num == target_array[-2] and next_num == target_array[-1] and arr.endswith(target_array)
+
+
+def part2_check_less(target: str):
+    state = bytearray([3, 7])
+    i = 0
+    j = 1
+    target_array = bytearray([int(c) for c in target])
+    target_len = len(target_array)
+    size = len(state)
+    last = -1
+    while size < MAX_SIZE:
         score1 = state[i]
         score2 = state[j]
         next_num = score1 + score2
         if next_num >= 10:
             size += 1
+            if append_and_check(state, target_array, last, 1):
+                break
+
+            size += 1
+            if append_and_check(state, target_array, 1, next_num % 10):
+                break
+            last = next_num % 10
+        else:
+            size += 1
+            if append_and_check(state, target_array, last, next_num):
+                break
+            last = next_num
+
+        next_index = i + 1 + score1
+        if next_index >= size:
+            next_index = next_index % size
+        i = next_index
+
+        next_index = j + 1 + score2
+        if next_index >= size:
+            next_index = next_index % size
+        j = next_index
+        # i = (i + 1 + score1) % size
+        # j = (j + 1 + score2) % size
+
+    return len(state) - target_len
+
+
+def part2_reverse(target: str):
+    state = bytearray([3, 7])
+    i = 0
+    j = 1
+    target_array = bytearray([int(c) for c in target])
+    target_len = len(target_array)
+    size = len(state)
+    while size < MAX_SIZE:
+        if size >= target_len:
+            for i in range(-1, -target_len - 1, -1):
+                if state[i] != target[i]:
+                    break
+            else:
+                break  # the end of state matched the target!
+
+        score1 = state[i]
+        score2 = state[j]
+        next_num = score1 + score2
+        if next_num >= 10:
+            size += 2
             state.append(1)
-        state.append(next_num % 10)
-        size += 1
-        i = (i + 1 + score1) % size
-        j = (j + 1 + score2) % size
+            state.append(next_num % 10)
+        else:
+            size += 1
+            state.append(next_num)
+
+        next_index = i + 1 + score1
+        if next_index >= size:
+            next_index = next_index % size
+        i = next_index
+
+        next_index = j + 1 + score2
+        if next_index >= size:
+            next_index = next_index % size
+        j = next_index
+        # i = (i + 1 + score1) % size
+        # j = (j + 1 + score2) % size
 
     return len(state) - target_len
 
