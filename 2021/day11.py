@@ -36,11 +36,13 @@ def main():
                     next_grid[y][x] = 0
         # print('\n'.join(''.join(str(v) for v in row) for row in next_grid), '\n')
         grid = next_grid
-        if flashes_in_step == height * width:
-            print('All flashed!', step)
-            break
 
-    print(flashes)
+        if step == 99:
+            print(flashes)
+
+        if flashes_in_step == height * width:
+            print('All flashed!', step + 1)
+            break
 
 
 def find_flash(grid, height, width):
