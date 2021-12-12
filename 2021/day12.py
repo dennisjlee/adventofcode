@@ -25,35 +25,6 @@ def main():
             cave1.neighbors.append(cave2)
             cave2.neighbors.append(cave1)
 
-    part1(caves_by_name)
-    part2(caves_by_name)
-
-
-def part1(caves_by_name):
-    start = caves_by_name['start']
-    end = caves_by_name['end']
-
-    valid_paths = []
-    queue = [State(start, {'start'}, ['start'])]
-    while queue:
-        current = queue.pop()
-        for neighbor in current.cave.neighbors:
-            if neighbor == end:
-                valid_paths.append(current.path)
-                continue
-            if neighbor.name in current.visited:
-                continue
-            new_visited = set(current.visited)
-            if neighbor.small:
-                new_visited.add(neighbor.name)
-            new_path = list(current.path)
-            new_path.append(neighbor.name)
-            queue.append(State(neighbor, new_visited, new_path))
-
-    print(len(valid_paths))
-
-
-def part2(caves_by_name):
     start = caves_by_name['start']
     end = caves_by_name['end']
 
@@ -76,14 +47,18 @@ def part2(caves_by_name):
                 queue.append(State(neighbor, new_visited, new_path))
 
     bfs()
+    # part 1 answer
+    print(len(valid_paths))
 
-    # for each small cave, try the BFS with 2 visits to that cave (we'll hit a lot of duplicate paths but we're deduping)
+    # for each small cave, try the BFS with 2 visits allowed to that cave (we'll hit a lot of duplicate paths but we're
+    # deduping)
     for cave in caves_by_name.values():
         if cave.small and cave is not start:
             cave.max_visits = 2
             bfs()
             cave.max_visits = 1
 
+    # part 2 answer
     print(len(valid_paths))
 
 
