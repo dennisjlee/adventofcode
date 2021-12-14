@@ -65,7 +65,7 @@ def main():
                 grid[y][x] = unit
 
     round = 0
-    while round < 15:
+    while True:
         print('\nStarting round', round + 1)
         try:
             units_in_order = get_units(grid)
@@ -117,9 +117,6 @@ def process_turn(unit: Unit, grid: list[list[str]], units_by_side: dict[str, dic
     height = len(grid)
     width = len(grid[0])
 
-    # TODO(dj): naive BFS isn't fast enough here, have to switch to using Djikstra's algorithm to find the
-    # shortest path
-
     path = find_path_to_enemy(unit, grid)
     if path:
         if len(path) > 1:
@@ -142,37 +139,36 @@ def process_turn(unit: Unit, grid: list[list[str]], units_by_side: dict[str, dic
             target.process_attack(unit.attack, grid, units_by_side)
 
 
-BfsState = namedtuple('BfsState', ['visited', 'path'])
-
-
 DIRECTIONS = [Point(0, -1), Point(-1, 0), Point(1, 0), Point(0, 1)]
 
 
 # return path to an enemy unit if possible (path excludes the unit's point and includes the enemy's point)
 def find_path_to_enemy(unit, grid) -> list[Point] | None:
     queue = deque()
+    visited = {unit.position}
     for direction in DIRECTIONS:
         new_point = Point(unit.position.x + direction.x, unit.position.y + direction.y)
-        queue.append(BfsState({unit.position, new_point}, [new_point]))
+        queue.append([new_point])
 
     height = len(grid)
     width = len(grid[0])
 
     while queue:
-        state = queue.popleft()
-        pos = state.path[-1]
-        if pos.x < 0 or pos.x >= width or pos.y < 0 or pos.y >= height:
+        path = queue.popleft()
+        pos = path[-1]
+        if pos.x < 0 or pos.x >= width or pos.y < 0 or pos.y >= height or pos in visited:
             continue
+        visited.add(pos)
 
         val = grid[pos.y][pos.x]
         if isinstance(val, Unit) and val.side == unit.enemy_side:
-            return state.path
+            return path
 
         if val == '.':
             for direction in DIRECTIONS:
                 new_point = Point(pos.x + direction.x, pos.y + direction.y)
-                if new_point not in state.visited:
-                    queue.append(BfsState(state.visited | {new_point}, state.path + [new_point]))
+                if new_point:
+                    queue.append(path + [new_point])
 
     return None
 
