@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 import sys
-from collections import namedtuple
+from collections import namedtuple, deque
 from typing import Union
 
 Point = namedtuple('Point', ['x', 'y'])
-
+DEBUG = False
 
 
 class Unit:
     next_id = 1
 
     def __init__(self, x: int, y: int, side: str):
-        self.id = self.next_id
-        self.next_id += 1
+        self.id = Unit.next_id
+        Unit.next_id += 1
         self.position = Point(x, y)
         self.side = side
         self.attack = 3
@@ -32,15 +32,18 @@ class Unit:
         self.hp -= attack
         if self.hp <= 0:
             grid[self.position.y][self.position.x] = '.'
-            del units_by_side[self.side][self.id]
+            units_for_side = units_by_side[self.side]
+            del units_for_side[self.id]
+
+    def __repr__(self):
+        return f'{self.side}({self.hp})'
 
 
 Grid = list[list[Union[str, Unit]]]
 
 
-
 def main():
-    units_by_side: dict[str,dict[int,Unit]] = {
+    units_by_side: dict[str, dict[int, Unit]] = {
         'G': {},
         'E': {}
     }
@@ -62,19 +65,32 @@ def main():
                 grid[y][x] = unit
 
     round = 0
-    while True:
+    while round < 15:
+        print('\nStarting round', round + 1)
         try:
             units_in_order = get_units(grid)
             for unit in units_in_order:
                 process_turn(unit, grid, units_by_side)
+
+            if DEBUG:
+                for y in range(height):
+                    for x in range(width):
+                        value = grid[y][x]
+                        if isinstance(value, Unit):
+                            sys.stdout.write(value.side)
+                        else:
+                            sys.stdout.write(value)
+                    sys.stdout.write('\n')
         except CombatFinished:
+            if DEBUG:
+                print('Combat finished')
             break
         round += 1
 
     remaining_hit_points = sum(
         sum(unit.hp for unit in units.values())
         for units in units_by_side.values())
-    print(round, remaining_hit_points, round * remaining_hit_points)
+    print(round * remaining_hit_points)
 
 
 def get_units(grid):
@@ -101,6 +117,9 @@ def process_turn(unit: Unit, grid: list[list[str]], units_by_side: dict[str, dic
     height = len(grid)
     width = len(grid[0])
 
+    # TODO(dj): naive BFS isn't fast enough here, have to switch to using Djikstra's algorithm to find the
+    # shortest path
+
     path = find_path_to_enemy(unit, grid)
     if path:
         if len(path) > 1:
@@ -123,35 +142,37 @@ def process_turn(unit: Unit, grid: list[list[str]], units_by_side: dict[str, dic
             target.process_attack(unit.attack, grid, units_by_side)
 
 
-
-BfsState = namedtuple('BfsState', ['point', 'path'])
+BfsState = namedtuple('BfsState', ['visited', 'path'])
 
 
 DIRECTIONS = [Point(0, -1), Point(-1, 0), Point(1, 0), Point(0, 1)]
 
 
 # return path to an enemy unit if possible (path excludes the unit's point and includes the enemy's point)
-def find_path_to_enemy(unit, grid) -> list[Point]:
-    queue = [[unit.position]]
+def find_path_to_enemy(unit, grid) -> list[Point] | None:
+    queue = deque()
+    for direction in DIRECTIONS:
+        new_point = Point(unit.position.x + direction.x, unit.position.y + direction.y)
+        queue.append(BfsState({unit.position, new_point}, [new_point]))
+
     height = len(grid)
     width = len(grid[0])
 
     while queue:
-        path = queue.pop()
-        pos = path[-1]
-        if pos.x < 0 or pos.x >= width or pos.y < 0 or pos.y >= height or pos in path:
+        state = queue.popleft()
+        pos = state.path[-1]
+        if pos.x < 0 or pos.x >= width or pos.y < 0 or pos.y >= height:
             continue
 
         val = grid[pos.y][pos.x]
-        if val == '#' or isinstance(val, Unit) and val.side == unit.side:
-            continue
-
         if isinstance(val, Unit) and val.side == unit.enemy_side:
-            return path[1:]
+            return state.path
 
-        for direction in DIRECTIONS:
-            new_point = Point(pos.x + direction.x, pos.y + direction.y)
-            queue.append(path + [new_point])
+        if val == '.':
+            for direction in DIRECTIONS:
+                new_point = Point(pos.x + direction.x, pos.y + direction.y)
+                if new_point not in state.visited:
+                    queue.append(BfsState(state.visited | {new_point}, state.path + [new_point]))
 
     return None
 
