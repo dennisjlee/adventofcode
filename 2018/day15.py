@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from collections import namedtuple, deque
+from copy import deepcopy
 from typing import Union
 
 Point = namedtuple('Point', ['x', 'y'])
@@ -11,12 +12,12 @@ DEBUG = False
 class Unit:
     next_id = 1
 
-    def __init__(self, x: int, y: int, side: str):
+    def __init__(self, x: int, y: int, side: str, attack_power=3):
         self.id = Unit.next_id
         Unit.next_id += 1
         self.position = Point(x, y)
         self.side = side
-        self.attack = 3
+        self.attack_power = attack_power
         self.hp = 200
 
     @property
@@ -40,33 +41,56 @@ class Unit:
 
 
 Grid = list[list[Union[str, Unit]]]
+UnitsBySide = dict[str, dict[int, Unit]]
 
 
 def main():
-    units_by_side: dict[str, dict[int, Unit]] = {
-        'G': {},
-        'E': {}
-    }
-
     with open(sys.argv[1]) as f:
         grid: Grid = [
             list(line.strip())
             for line in f.readlines()
         ]
 
+    # part 1
+    round_number, units_by_side = run_simulation(deepcopy(grid))
+    remaining_hit_points = sum(
+        sum(unit.hp for unit in units.values())
+        for units in units_by_side.values())
+    print(round_number * remaining_hit_points)
+
+    # part 2
+    original_elf_count = sum(sum(1 for v in row if v == 'E') for row in grid)
+    for elf_attack_power in range(4, 1000):
+        round_number, units_by_side = run_simulation(deepcopy(grid), elf_attack_power)
+        if len(units_by_side['E']) == original_elf_count:
+            remaining_hit_points = sum(
+                sum(unit.hp for unit in units.values())
+                for units in units_by_side.values())
+            print(round_number * remaining_hit_points)
+            break
+
+
+def run_simulation(grid, elf_attack_power=3) -> tuple[int, UnitsBySide]:
+    units_by_side: UnitsBySide = {
+        'G': {},
+        'E': {}
+    }
+
     height = len(grid)
     width = len(grid[0])
+
     for y in range(height):
         for x in range(width):
             value = grid[y][x]
             if value == 'G' or value == 'E':
-                unit = Unit(x, y, value)
+                unit = Unit(x, y, value, attack_power=(elf_attack_power if value == 'E' else 3))
                 units_by_side[value][unit.id] = unit
                 grid[y][x] = unit
 
-    round = 0
+    round_number = 0
     while True:
-        print('\nStarting round', round + 1)
+        if DEBUG:
+            print('\nStarting round', round_number + 1)
         try:
             units_in_order = get_units(grid)
             for unit in units_in_order:
@@ -85,12 +109,9 @@ def main():
             if DEBUG:
                 print('Combat finished')
             break
-        round += 1
+        round_number += 1
 
-    remaining_hit_points = sum(
-        sum(unit.hp for unit in units.values())
-        for units in units_by_side.values())
-    print(round * remaining_hit_points)
+    return round_number, units_by_side
 
 
 def get_units(grid):
@@ -136,7 +157,7 @@ def process_turn(unit: Unit, grid: list[list[str]], units_by_side: dict[str, dic
                         enemies.append(neighbor)
 
             target = min(enemies, key=lambda u: u.hp)
-            target.process_attack(unit.attack, grid, units_by_side)
+            target.process_attack(unit.attack_power, grid, units_by_side)
 
 
 DIRECTIONS = [Point(0, -1), Point(-1, 0), Point(1, 0), Point(0, 1)]
