@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import functools
+import heapq
 import math
 from collections import deque, defaultdict
 import itertools
@@ -41,6 +43,10 @@ ROOM_NAMES_BY_X = {
     9: 'D'
 }
 
+X_BY_ROOM_NAME = {
+    v: k for k, v in ROOM_NAMES_BY_X.items()
+}
+
 STEP_COSTS = {
     'A': 1,
     'B': 10,
@@ -60,13 +66,15 @@ class Move(typing.NamedTuple):
 
 
 class Node:
+    x: int
     id: str
     capacity: int
     occupants: deque[str]
     edges: list[Edge]
     allowed_types: frozenset[str]
 
-    def __init__(self, id: str, capacity: int):
+    def __init__(self, x: int, id: str, capacity: int):
+        self.x = x
         self.id = id
         self.capacity = capacity
         self.occupants = deque()
@@ -98,8 +106,8 @@ class Node:
 
 
 class Room(Node):
-    def __init__(self, id: str, capacity: int, letter: str):
-        super().__init__(id, capacity)
+    def __init__(self, x: int, id: str, capacity: int, letter: str):
+        super().__init__(x, id, capacity)
         self.letter = letter
 
     def is_complete(self):
@@ -145,8 +153,8 @@ class Room(Node):
 
 
 class Hallway(Node):
-    def __init__(self, id: str):
-        super().__init__(id, 1)
+    def __init__(self, x: int, id: str):
+        super().__init__(x, id, 1)
 
     def possible_moves(self, state: State) -> typing.Iterable[Move]:
         if not self.occupants:
@@ -167,7 +175,7 @@ class Hallway(Node):
                 distances[node.id] = distance
             else:
                 continue
-            if node.occupied:
+            if node.occupied and node != self:
                 continue
 
             for edge in node.edges:
@@ -182,16 +190,54 @@ class Hallway(Node):
         return f'Hallway(occupants=[{",".join(self.occupants)}])'
 
 
-class State(typing.NamedTuple):
+@functools.total_ordering
+class State:
     nodes: dict[str, Node]
     energy_used: int
+
+    def __init__(self, nodes: dict[str, Node], energy_used: int):
+        self.nodes = nodes
+        self.energy_used = energy_used
 
     def is_complete(self):
         return all(r.is_complete() for r in self.nodes.values() if isinstance(r, Room))
 
     def __hash__(self):
         val = tuple(tuple(n.occupants) for _, n in sorted(self.nodes.items()))
-        return hash(val)
+        return hash((self.energy_used, val))
+
+    @functools.cached_property
+    def heuristic(self):
+        h = 0
+        for node_id, node in self.nodes.items():
+            if isinstance(node, Hallway) and node.occupants:
+                letter = node.occupants[0]
+                dest_x = X_BY_ROOM_NAME[letter]
+                h += (1 + abs(node.x - dest_x)) * STEP_COSTS[letter]
+            elif isinstance(node, Room) and node.occupants:
+                current_height = len(node.occupants)
+                try:
+                    non_matching_index = next(i for i, v in enumerate(node.occupants) if v != node.letter)
+                    for j in range(non_matching_index, current_height):
+                        letter = node.occupants[j]
+                        dest_x = X_BY_ROOM_NAME[letter]
+                        h += (current_height - j + 1 + abs(node.x - dest_x)) * STEP_COSTS[letter]
+                except StopIteration:
+                    # no non-matching indexes found
+                    continue
+        return h
+
+    def __eq__(self, other):
+        return isinstance(other, State) and hash(self) == hash(other)
+
+    def __ne__(self, other):
+        return not (isinstance(other, State) and hash(self) == hash(other))
+
+    def __lt__(self, other):
+        return (self.energy_used + self.heuristic) < (other.energy_used + other.heuristic)
+
+    def __repr__(self):
+        return f'State(energy_used={self.energy_used}, heuristic={self.heuristic})'
 
 
 class Amphipod:
@@ -205,9 +251,9 @@ class Amphipod:
 
 def main():
     # part 1 solved w/ pen and paper lol - answer was 11536
-    print(find_best_solution(SIMPLE_INPUT))
+    # print(find_best_solution(SIMPLE_INPUT))
 
-    # print(find_best_solution(PART1_INPUT))
+    print(find_best_solution(PART1_INPUT))
 
     # part 2
     # print(find_best_solution(PART2_INPUT))
@@ -217,19 +263,18 @@ def find_best_solution(raw_input: str):
     raw_lines = raw_input.strip().split('\n')
     initial_state = parse_nodes(raw_lines)
 
-    queue = deque([initial_state])
+    heap = [initial_state]
     state_results = {}
     best_result = math.inf
     # TODO: this just isn't working - the branching factor seems to be too high. Probably need to try to use A* search
-    while queue:
-        state = queue.popleft()
+    while heap:
+        state = heapq.heappop(heap)
         if state in state_results and state.energy_used > state_results[state]:
             continue
         state_results[state] = state.energy_used
-        print('queue length', len(queue), '; energy', state.energy_used)
+        print('queue length', len(heap), '; energy', state.energy_used, '; heuristic', state.heuristic)
         if state.is_complete():
-            best_result = min(best_result, state.energy_used)
-            continue
+            return state.energy_used
 
         num_successors = 0
         for n_id, node in state.nodes.items():
@@ -247,7 +292,7 @@ def find_best_solution(raw_input: str):
                 move_energy = (move.distance + src_internal_distance + dest_internal_distance) * STEP_COSTS[letter]
 
                 new_state = State(new_nodes, state.energy_used + move_energy)
-                queue.append(new_state)
+                heapq.heappush(heap, new_state)
                 num_successors += 1
 
         print(f'added {num_successors} successor states')
@@ -265,34 +310,34 @@ def parse_nodes(lines: list[str]):
 
     nodes: dict[str, Node] = {}
     for col_index, letter in ROOM_NAMES_BY_X.items():
-        nodes[letter] = Room(letter, room_capacity, letter)
+        nodes[letter] = Room(col_index, letter, room_capacity, letter)
         fill_room(lines, col_index, nodes[letter])
 
-    left1 = Hallway('L1')
-    left2 = Hallway('L2')
+    left1 = Hallway(1, 'L1')
+    left2 = Hallway(2, 'L2')
     left1.connect(left2, 1)
 
     left2.connect(nodes['A'], 2)
-    ab = Hallway('AB')
+    ab = Hallway(4, 'AB')
     left2.connect(ab, 2)
     ab.connect(nodes['A'], 2)
     ab.connect(nodes['B'], 2)
 
-    bc = Hallway('BC')
+    bc = Hallway(6, 'BC')
     bc.connect(ab, 2)
     bc.connect(nodes['B'], 2)
     bc.connect(nodes['C'], 2)
 
-    cd = Hallway('CD')
+    cd = Hallway(8, 'CD')
     cd.connect(bc, 2)
     cd.connect(nodes['C'], 2)
     cd.connect(nodes['D'], 2)
 
-    right2 = Hallway('R2')
+    right2 = Hallway(10, 'R2')
     right2.connect(cd, 2)
     right2.connect(nodes['D'], 2)
 
-    right1 = Hallway('R1')
+    right1 = Hallway(11, 'R1')
     right1.connect(right2, 1)
 
     for h in (left1, left2, ab, bc, cd, right2, right1):
