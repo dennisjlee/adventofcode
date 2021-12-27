@@ -1,7 +1,6 @@
 import functools
 from collections import defaultdict
-from typing import Callable
-
+from typing import Callable, Optional
 
 @functools.cache
 def alu0(d, z):
@@ -21,7 +20,7 @@ def alu0(d, z):
     z *= y
     y *= 0
     y += w
-    y += 16
+    y += 15
     y *= x
     z += y
     return z
@@ -338,15 +337,26 @@ def alu13(d, z):
     z += y
     return z
 
+@functools.cache
+def s_alu12(d, z):
+    x = z % 26
+    z = int(z / 26)
+    x1 = int(x - 4 != d)  # 0 or 1
+    y = 25 * x1 + 1  # 26 or 1
+    z *= y
+    y1 = (d + 15) * x1
+    z += y1
+    return z
+
 
 @functools.cache
-def alu13_simplified(d, z):
+def s_alu13(d, z):
     x = z % 26
     z = int(z / 26)
     x1 = int(x != d)  # 0 or 1
-    y = 25 * x1 + 1   # 26 or 1
+    y = 25 * x1 + 1  # 26 or 1
     z *= y
-    y1 = (d + 15) * x1 # (d + 15) or 0
+    y1 = (d + 15) * x1  # (d + 15) or 0
     z += y1
     return z
 
@@ -358,31 +368,84 @@ def main():
 
 
 def work_backwards(alus: list[Callable[[int, int], int]]):
-    possible_inputs = [{0}]
-    possible_outputs = []
-    for i in range(14):
-        outputs = {}
-        possible_outputs.append(outputs)
+    possible_inputs = [set() for _ in range(14)]
+    possible_inputs[0].add(0)
+    possible_outputs = [defaultdict(set) for _ in range(14)]
+
+    for d in range(1, 10):
+        # alu13 can only produce 0 using z inputs in this range
+        for z_in in range(-26, 27):
+            z_out = alus[13](d, z_in)
+            # later d values will overwrite, so we'll be left with the highest
+            if z_out == 0:
+                possible_outputs[13][z_in].add((d, z_out))
+                possible_inputs[13].add(z_in)
+
+    for i in range(12, -1, -1):
+        next_inputs = possible_inputs[i + 1]
+        outputs = possible_outputs[i]
         for d in range(1, 10):
-            for z_in in possible_inputs[i]:
+            for z_in in range(20000):
                 z_out = alus[i](d, z_in)
+                if z_out in next_inputs:
+                    outputs[z_in].add((d, z_out))
+        possible_inputs[i] = set(outputs.keys())
 
-                key = (z_in, z_out)
-                # later d values will overwrite, so we'll be left with the highest
-                outputs[(z_in, z_out)] = d
+    # print([len(i) for i in possible_inputs])
+    # print([len(o) for o in possible_outputs])
+    # print(possible_inputs[0])
+    # print(possible_outputs[0])
 
-        possible_inputs.append({output_key[1] for output_key in outputs.keys()})
+    model_number = find_highest_model_number(possible_outputs, 0, 0)
+    print(''.join(str(d) for d in model_number))
+    # print(execute(alus, model_number))
 
-        print('possible inputs:', i, len(possible_inputs[i]))
-        print('possible outputs:', i, len(possible_outputs[i]))
+    # part 2
+    model_number = find_lowest_model_number(possible_outputs, 0, 0)
+    print(''.join(str(d) for d in model_number))
+    # print(execute(alus, model_number))
+
+
+def find_highest_model_number(possible_outputs: list[dict[int, set[tuple[int, int]]]], i: int, z_in: int) \
+    -> Optional[list[int]]:
+
+    if z_in not in possible_outputs[i]:
+        return None
+
+    for d, z_out in sorted(possible_outputs[i][z_in], reverse=True):
+        if i == len(possible_outputs) - 1:
+            return [d]
+        subsolution = find_highest_model_number(possible_outputs, i + 1, z_out)
+        if subsolution:
+            return [d] + subsolution
+
+
+def find_lowest_model_number(possible_outputs: list[dict[int, set[tuple[int, int]]]], i: int, z_in: int) \
+        -> Optional[list[int]]:
+
+    if z_in not in possible_outputs[i]:
+        return None
+
+    for d, z_out in sorted(possible_outputs[i][z_in]):
+        if i == len(possible_outputs) - 1:
+            return [d]
+        subsolution = find_lowest_model_number(possible_outputs, i + 1, z_out)
+        if subsolution:
+            return [d] + subsolution
+
+
+def execute(alus: list[Callable[[int, int], int]], digits: list[int]) -> list[int]:
+    register_snapshots: list[int] = [0]
+    for i, alu in enumerate(alus):
+        register_snapshots.append(alu(digits[i], register_snapshots[i]))
+    return register_snapshots
 
 
 def brute_force(alus: list[Callable[[int, int], int]]):
     digits = [9] * 14
     register_snapshots: list[int] = [0]
-    for i, alu in enumerate(alus):
-        register_snapshots.append(alu(digits[i], register_snapshots[i]))
-    if register_snapshots[-1] == 0:
+    result = execute(alus, digits)[-1]
+    if result == 0:
         print(''.join(str(d) for d in digits))
         return
 

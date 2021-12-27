@@ -109,7 +109,8 @@ def main():
                     instructions.append(
                         Instruction(args[0], register_name_to_index(args[1]), register_name_to_index(args[2]), None))
 
-    digits = [9] * 14
+    # digits = [9] * 14
+    digits = [9, 4, 3, 9, 9, 8, 9, 8, 9, 4, 9, 9, 5, 9]
     alus = []
     assert len(instruction_sets) == 14
     for i in range(14):
@@ -118,6 +119,10 @@ def main():
             alu.copy_registers(alus[i - 1])
         alu.execute_all(digits[i])
         alus.append(alu)
+
+    if alus[-1].is_valid:
+        print('is valid!')
+        return
 
     counter = 0
     while any(d > 1 for d in digits):
