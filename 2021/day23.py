@@ -13,7 +13,8 @@ from copy import copy, deepcopy
 SIMPLE_INPUT = """
 #############
 #...........#
-###B#A#C#D###
+###A#B#A#D###
+###B#C#C#D###
   #########
 """
 
@@ -76,15 +77,14 @@ class Node:
     x: int
     id: str
     capacity: int
-    occupants: deque[str]
+    occupants: list[str]
     edges: list[Edge]
-    allowed_types: frozenset[str]
 
     def __init__(self, x: int, id: str, capacity: int):
         self.x = x
         self.id = id
         self.capacity = capacity
-        self.occupants = deque()
+        self.occupants = []
         self.edges = []
 
     def connect(self, other: Node, distance: int):
@@ -111,8 +111,13 @@ class Node:
     def possible_moves(self, state: State) -> typing.Iterable[Move]:
         raise NotImplemented
 
+    def clone(self):
+        raise NotImplemented
+
 
 class Room(Node):
+    letter: str
+
     def __init__(self, x: int, id: str, capacity: int, letter: str):
         super().__init__(x, id, capacity)
         self.letter = letter
@@ -158,6 +163,12 @@ class Room(Node):
     def __repr__(self):
         return f'Room(capacity={self.capacity}, letter={self.letter}, occupants=[{",".join(self.occupants)}])'
 
+    def clone(self):
+        clone = Room(self.x, self.id, self.capacity, self.letter)
+        clone.edges = self.edges
+        clone.occupants[:] = self.occupants
+        return clone
+
 
 class Hallway(Node):
     def __init__(self, x: int, id: str):
@@ -195,6 +206,12 @@ class Hallway(Node):
 
     def __repr__(self):
         return f'Hallway(occupants=[{",".join(self.occupants)}])'
+
+    def clone(self):
+        clone = Hallway(self.x, self.id)
+        clone.edges = self.edges
+        clone.occupants[:] = self.occupants
+        return clone
 
 
 @functools.total_ordering
@@ -246,6 +263,21 @@ class State:
     def __repr__(self):
         return f'State(energy_used={self.energy_used}, heuristic={self.heuristic})'
 
+    def successor_states(self) -> typing.Iterable[State]:
+        for n_id, node in self.nodes.items():
+            for move in node.possible_moves(self):
+                new_nodes = copy(self.nodes)
+                src = node.clone()
+                new_nodes[n_id] = src
+                dest = new_nodes[move.dest_id].clone()
+                new_nodes[move.dest_id] = dest
+
+                letter, src_internal_distance = src.pop_occupant()
+                dest_internal_distance = dest.push_occupant(letter)
+                move_energy = (move.distance + src_internal_distance + dest_internal_distance) * STEP_COSTS[letter]
+
+                yield State(new_nodes, self.energy_used + move_energy)
+
 
 class Amphipod:
     letter: str
@@ -258,23 +290,48 @@ class Amphipod:
 
 def main():
     # part 1 solved w/ pen and paper lol - answer was 11536
-    # print(find_best_solution(SIMPLE_INPUT))
+    # print(find_best_solution1(SIMPLE_INPUT))
+    # print(find_best_solution2(SIMPLE_INPUT))
 
-    # print(find_best_solution(PART1_INPUT))
-    print(find_best_solution(EXAMPLE_INPUT))
+    print(find_best_solution1(PART1_INPUT))
+    # print(find_best_solution1(EXAMPLE_INPUT))
 
     # part 2
-    # print(find_best_solution(PART2_INPUT))
+    # print(find_best_solution1(PART2_INPUT))
 
 
-def find_best_solution(raw_input: str):
+def find_best_solution1(raw_input: str):
+    raw_lines = raw_input.strip().split('\n')
+    initial_state = parse_nodes(raw_lines)
+    return a_star_search(initial_state)
+
+
+def find_best_solution2(raw_input: str):
     raw_lines = raw_input.strip().split('\n')
     initial_state = parse_nodes(raw_lines)
 
+    best_solution = preferential_dfs(initial_state)
+    return best_solution.energy_used
+
+
+def preferential_dfs(state):
+    if state.is_complete():
+        return state
+
+    successors = sorted(state.successor_states())
+    best_solution = None
+    for successor in successors:
+        if best_solution and successor > best_solution:
+            continue
+        candidate_solution = preferential_dfs(successor)
+        if candidate_solution:
+            best_solution = candidate_solution if best_solution is None else min(best_solution, candidate_solution)
+    return best_solution
+
+
+def a_star_search(initial_state):
     heap = [initial_state]
     state_results = {}
-    best_result = math.inf
-    # TODO: this just isn't working - the branching factor seems to be too high. Probably need to try to use A* search
     counter = 0
     while heap:
         counter += 1
@@ -283,27 +340,17 @@ def find_best_solution(raw_input: str):
             continue
         state_results[state] = state.energy_used
         if counter % 1000 == 0:
-            print(f'counter {counter}; queue length {len(heap)}; state {state}')
+            print(f'counter {counter}; queue length {len(heap)}; current state: {state}')
         if state.is_complete():
             return state.energy_used
 
-        for n_id, node in state.nodes.items():
-            possible_moves = list(node.possible_moves(state))
-            for move in possible_moves:
-                new_nodes = copy(state.nodes)
-                src = deepcopy(node)
-                new_nodes[n_id] = src
-                dest = deepcopy(new_nodes[move.dest_id])
-                new_nodes[move.dest_id] = dest
+        num_successors = 0
+        for new_state in state.successor_states():
+            heapq.heappush(heap, new_state)
+            num_successors += 1
 
-                letter, src_internal_distance = src.pop_occupant()
-                dest_internal_distance = dest.push_occupant(letter)
-                move_energy = (move.distance + src_internal_distance + dest_internal_distance) * STEP_COSTS[letter]
-
-                new_state = State(new_nodes, state.energy_used + move_energy)
-                heapq.heappush(heap, new_state)
-
-    return best_result
+        # print(f'added {num_successors} successor states')
+    return math.inf
 
     # def execute_move(self, move: Move) -> tuple[int, Node, Node]:
     #     amphipod = self.pop_occupant()
