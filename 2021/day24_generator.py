@@ -28,7 +28,9 @@ def main():
                 instructions.append(Instruction(args[0], args[1], args[2]))
 
     for i, instruction_set in enumerate(instruction_sets):
-        print(f'def alu{i}(d, w, x, y, z):')
+        print(f'@functools.cache')
+        print(f'def alu{i}(d, z):')
+        print('    x = y = 0')
         for instruction in instruction_set:
             op = instruction.op
             reg = instruction.reg1
@@ -47,7 +49,7 @@ def main():
                     print(f'    {reg} = {reg} % {arg}')
                 elif op == 'eql':
                     print(f'    {reg} = int({reg} == {arg})')
-        print('    return w, x, y, z')
+        print('    return z')
         print('\n')
 
 
