@@ -17,6 +17,13 @@ SIMPLE_INPUT = """
   #########
 """
 
+EXAMPLE_INPUT = """
+#############
+#...........#
+###B#C#B#D###
+  #A#D#C#A#
+  #########
+"""
 
 PART1_INPUT = """
 #############
@@ -253,7 +260,8 @@ def main():
     # part 1 solved w/ pen and paper lol - answer was 11536
     # print(find_best_solution(SIMPLE_INPUT))
 
-    print(find_best_solution(PART1_INPUT))
+    # print(find_best_solution(PART1_INPUT))
+    print(find_best_solution(EXAMPLE_INPUT))
 
     # part 2
     # print(find_best_solution(PART2_INPUT))
@@ -267,19 +275,20 @@ def find_best_solution(raw_input: str):
     state_results = {}
     best_result = math.inf
     # TODO: this just isn't working - the branching factor seems to be too high. Probably need to try to use A* search
+    counter = 0
     while heap:
+        counter += 1
         state = heapq.heappop(heap)
         if state in state_results and state.energy_used > state_results[state]:
             continue
         state_results[state] = state.energy_used
-        print('queue length', len(heap), '; energy', state.energy_used, '; heuristic', state.heuristic)
+        if counter % 1000 == 0:
+            print(f'counter {counter}; queue length {len(heap)}; state {state}')
         if state.is_complete():
             return state.energy_used
 
-        num_successors = 0
         for n_id, node in state.nodes.items():
             possible_moves = list(node.possible_moves(state))
-            x = 1
             for move in possible_moves:
                 new_nodes = copy(state.nodes)
                 src = deepcopy(node)
@@ -293,9 +302,6 @@ def find_best_solution(raw_input: str):
 
                 new_state = State(new_nodes, state.energy_used + move_energy)
                 heapq.heappush(heap, new_state)
-                num_successors += 1
-
-        print(f'added {num_successors} successor states')
 
     return best_result
 
