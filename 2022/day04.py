@@ -1,17 +1,20 @@
+from __future__ import annotations
 import sys
 from collections import namedtuple
 
 
 class Assignment(namedtuple('Assignment', ['start', 'end'])):
-    def contains(self, other):
+    def contains(self, other: Assignment):
         return self.start <= other.start and self.end >= other.end
 
-    def overlaps(self, other):
+    def overlaps(self, other: Assignment):
         return self.start <= other.end and self.end >= other.start
 
-def parse_assignment(s: str):
+
+def parse_assignment(s: str) -> Assignment:
     start, end = s.split('-')
     return Assignment(int(start), int(end))
+
 
 def main():
     with open(sys.argv[1]) as f:
