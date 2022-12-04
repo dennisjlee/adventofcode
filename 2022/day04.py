@@ -3,17 +3,17 @@ import sys
 from collections import namedtuple
 
 
-class Assignment(namedtuple('Assignment', ['start', 'end'])):
-    def contains(self, other: Assignment):
+class InclusiveRange(namedtuple('InclusiveRange', ['start', 'end'])):
+    def contains(self, other: InclusiveRange):
         return self.start <= other.start and self.end >= other.end
 
-    def overlaps(self, other: Assignment):
+    def overlaps(self, other: InclusiveRange):
         return self.start <= other.end and self.end >= other.start
 
 
-def parse_assignment(s: str) -> Assignment:
+def parse_inclusive_range(s: str) -> InclusiveRange:
     start, end = s.split('-')
-    return Assignment(int(start), int(end))
+    return InclusiveRange(int(start), int(end))
 
 
 def main():
@@ -23,7 +23,7 @@ def main():
     assignments = []
     for line in lines:
         first, second = line.split(',')
-        assignments.append((parse_assignment(first), parse_assignment(second)))
+        assignments.append((parse_inclusive_range(first), parse_inclusive_range(second)))
 
     print(len([1 for left, right in assignments if left.contains(right) or right.contains(left)]))
 
