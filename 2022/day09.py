@@ -1,56 +1,88 @@
 from __future__ import annotations
-import re
 import sys
-from collections import namedtuple, deque
-from copy import deepcopy
+from typing import NamedTuple
 
 
-class Move(namedtuple('Move', ['num', 'src', 'dest'])):
-    pass
+class Move(NamedTuple):
+    direction: str
+    magnitude: int
 
 
-MOVE_REGEX = re.compile(r'move (\d+) from (\d+) to (\d+)')
+class Point(NamedTuple):
+    x: int
+    y: int
+
+
+class KnotPosition:
+    pos: Point
+    previous_positions: set[Point]
+
+    def __init__(self):
+        self.pos = Point(0, 0)
+        self.previous_positions = {self.pos}
+
+    def __repr__(self):
+        return repr(self.pos)
+
+    def move(self, new_pos: Point):
+        self.pos = new_pos
+        self.previous_positions.add(new_pos)
+
+    def move_direction(self, direction: str):
+        if direction == 'U':
+            new_pos = Point(self.pos.x, self.pos.y - 1)
+        elif direction == 'D':
+            new_pos = Point(self.pos.x, self.pos.y + 1)
+        elif direction == 'L':
+            new_pos = Point(self.pos.x - 1, self.pos.y)
+        elif direction == 'R':
+            new_pos = Point(self.pos.x + 1, self.pos.y)
+        self.move(new_pos)
+
+    def chase(self, other: KnotPosition):
+        ps = self.pos
+        po = other.pos
+        if ps.x == po.x and abs(ps.y - po.y) == 2:
+            dy = (po.y - ps.y) // 2
+            self.move(Point(ps.x, ps.y + dy))
+        elif ps.y == po.y and abs(ps.x - po.x) == 2:
+            dx = (po.x - ps.x) // 2
+            self.move(Point(ps.x + dx, ps.y))
+        elif ps.x != po.x and ps.y != po.y and \
+                ((abs(ps.x - po.x) + abs(ps.y - po.y)) > 2):
+            dx = 1 if po.x > ps.x else -1
+            dy = 1 if po.y > ps.y else -1
+            self.move(Point(ps.x + dx, ps.y + dy))
+        elif abs(ps.x - po.x) + abs(ps.y - po.y) > 2:
+            raise Exception('Too far!')
 
 
 def main():
     with open(sys.argv[1]) as f:
-        crates_raw, moves_raw = f.read().strip().split('\n\n')
+        lines = [l.strip() for l in f.readlines()]
 
-    stacks = {}
-    for line_num, crate_line in enumerate(reversed(crates_raw.split('\n'))):
-        if line_num == 0:
-            for n in range(1, 10):
-                stacks[n] = deque()
-        else:
-            for n in range(1, 10):
-                i = 4 * (n - 1) + 1
-                if crate_line[i] != ' ':
-                    stacks[n].append(crate_line[i])
+    moves = []
+    for line in lines:
+        d, m = line.split()
+        moves.append(Move(d, int(m)))
 
-    moves: list[Move] = []
-    for move_line in moves_raw.split('\n'):
-        match = MOVE_REGEX.match(move_line)
-        moves.append(Move(int(match.group(1)), int(match.group(2)), int(match.group(3))))
+    head = KnotPosition()
+    tail = KnotPosition()
+    for move in moves:
+        for i in range(move.magnitude):
+            head.move_direction(move.direction)
+            tail.chase(head)
 
-    stacks_new = deepcopy(stacks)
+    print(len(tail.previous_positions))
 
-    for m in moves:
-        src = stacks[m.src]
-        dest = stacks[m.dest]
-        for c in range(m.num):
-            dest.append(src.pop())
+    knots = [KnotPosition() for _ in range(10)]
+    for m, move in enumerate(moves):
+        for i in range(move.magnitude):
+            knots[0].move_direction(move.direction)
+            for k in range(1, 10):
+                knots[k].chase(knots[k-1])
 
-    print(''.join(stacks[n][-1] for n in range(1, 10)))
-
-    for m in moves:
-        src = stacks_new[m.src]
-        dest = stacks_new[m.dest]
-        temp = deque()
-        for c in range(m.num):
-            temp.appendleft(src.pop())
-        dest.extend(temp)
-
-    print(''.join(stacks_new[n][-1] for n in range(1, 10)))
+    print(len(knots[-1].previous_positions))
 
 
 if __name__ == '__main__':
