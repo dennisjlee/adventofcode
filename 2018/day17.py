@@ -11,6 +11,9 @@ class Point(NamedTuple):
 
 class State(NamedTuple):
     grid: dict[Point, str]
+    min_x: int
+    max_x: int
+    min_y: int
     max_y: int
 
 """
@@ -53,23 +56,43 @@ def main():
 
     print('area', (max_x - min_x) * (max_y - min_y))
     starting_point = Point(x=500, y=0)
+    iterate(State(grid, min_x, max_x, min_y, max_y), [starting_point])
 
 
-def iterate(state: State, current: Point):
-    state.grid[current] = '|'
-    down = Point(current.x, current.y + 1)
-    if down in state.grid:
-        # clay (#) or standing water (~)
-        pass
-    else:
-        # open space, keep falling down
-        iterate(state, down)
-        if state.grid[down] == '~':
-            pass
+def iterate(state: State, current_flow_points: list[Point]):
+    while current_flow_points:
+        current = current_flow_points.pop()
+        for next_y in range(current.y + 1, state.max_y + 1):
+            next_point = Point(current.x, next_y)
+            if next_point in state.grid:
+                break
+            else:
+                state.grid[next_point] = '|'
+        else:
+            # we ran off the bottom without breaking
+            next_point = None
+
+        if next_point:
+            tile_below = state.grid.get(next_point)
+            if tile_below == '#':
+                # clay
+                lx = next_point.x - 1
+                for lx in range(next_point.x - 1, state.min_x - 2, -1):
+                    if state.grid.get(Point(lx, next_point.y)) != '#' or Point(lx, next_point.y - 1) in state.grid:
+                        break
+                if state.grid[Point(lx, next_point.y - 1)] == '#':
+                    # we were blocked on the left
+                    pass
+
+            elif tile_below == '~':
+                # standing water
+                print('is this possible?')
+                pass
 
 
 
 
 
-if __name__ == '__main__':
-    main()
+
+    if __name__ == '__main__':
+        main()
