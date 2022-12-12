@@ -4,7 +4,7 @@ import math
 from copy import deepcopy
 from collections import deque, defaultdict
 from heapq import heapify, heappop, heappush
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, Iterable
 import re
 import sys
 
@@ -70,8 +70,24 @@ def main():
     with open(sys.argv[1]) as f:
         raw_grid = [list(line.strip()) for line in f.readlines()]
 
-    # dijkstra(raw_grid)
-    a_star(raw_grid)
+    dijkstra(raw_grid)
+    # a_star(raw_grid)
+
+
+def candidate_points(p: Point, width: int, height: int) -> Iterable[Point]:
+    x, y = p
+    if x > 0:
+        yield Point(x - 1, y)
+
+    if x < width - 1:
+        yield Point(x + 1, y)
+
+    if y > 0:
+        yield Point(x, y - 1)
+
+    if y < height - 1:
+        yield Point(x, y + 1)
+
 
 def dijkstra(raw_grid):
     height = len(raw_grid)
@@ -109,7 +125,6 @@ def dijkstra(raw_grid):
         dist, curr = heappop(heap)
         x, y = curr
         z = grid[y][x]
-        candidate_points = []
 
         steps += 1
         if steps % 1000 == 0:
@@ -119,25 +134,13 @@ def dijkstra(raw_grid):
             print(dist, f'(steps: {steps})')
             break
 
-        if x > 0:
-            candidate_points.append(Point(x - 1, y))
-
-        if x < width - 1:
-            candidate_points.append(Point(x + 1, y))
-
-        if y > 0:
-            candidate_points.append(Point(x, y - 1))
-
-        if y < height - 1:
-            candidate_points.append(Point(x, y + 1))
-
         visited.add(curr)
 
-        for candidate in candidate_points:
+        for candidate in candidate_points(curr, width, height):
             if candidate not in visited and grid[candidate.y][candidate.x] <= z + 1:
                 if dist + 1 < tentative_distance[candidate]:
                     tentative_distance[candidate] = dist + 1
-                heappush(heap, (tentative_distance[candidate], candidate))
+                    heappush(heap, (tentative_distance[candidate], candidate))
 
 
 def a_star(raw_grid):
@@ -179,7 +182,6 @@ def a_star(raw_grid):
     # for y in range(height):
     #     print([distance_estimates[Point(x, y)] for x in range(width)])
 
-
     forward = False
     if forward:
         def forward_heuristic(p: Point, path_len: int):
@@ -202,21 +204,8 @@ def a_star(raw_grid):
                 print(len(visited) - 1, 'steps:', steps)
                 break
 
-            candidate_points = []
-            if x > 0 and grid[y][x - 1] <= z + 1:
-                candidate_points.append(Point(x - 1, y))
-
-            if x < width - 1 and grid[y][x + 1] <= z + 1:
-                candidate_points.append(Point(x + 1, y))
-
-            if y > 0 and grid[y - 1][x] <= z + 1:
-                candidate_points.append(Point(x, y - 1))
-
-            if y < height - 1 and grid[y + 1][x] <= z + 1:
-                candidate_points.append(Point(x, y + 1))
-
-            for candidate in candidate_points:
-                if candidate not in visited:
+            for candidate in candidate_points(state.current, width, height):
+                if candidate not in visited and grid[candidate.y][candidate.x] <= z + 1:
                     heappush(states, State(forward_heuristic(candidate, len(visited)), candidate, visited | {candidate}))
     else:
         def backward_heuristic(p: Point, path_len: int):
@@ -239,20 +228,7 @@ def a_star(raw_grid):
                 print(len(visited) - 1, f'(steps: {steps})')
                 break
 
-            candidate_points = []
-            if x > 0:
-                candidate_points.append(Point(x - 1, y))
-
-            if x < width - 1:
-                candidate_points.append(Point(x + 1, y))
-
-            if y > 0:
-                candidate_points.append(Point(x, y - 1))
-
-            if y < height - 1:
-                candidate_points.append(Point(x, y + 1))
-
-            for candidate in candidate_points:
+            for candidate in candidate_points(state.current, width, height):
                 if candidate not in visited and grid[candidate.y][candidate.x] >= z - 1:
                     heappush(states, State(backward_heuristic(candidate, len(visited)), candidate, visited | {candidate}))
 
