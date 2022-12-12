@@ -56,7 +56,7 @@ def manhattan_distance(p1: Point, p2: Point):
 #     if z == 0:
 #         return manhattan_distance(p, start)
 #     points_below = locations_by_z[z - 1]
-#     best_dist = math.inf
+#     best_dist = sys.maxsize
 #     best = None
 #     for pb in points_below:
 #         dist = manhattan_distance(p, pb)
@@ -70,7 +70,7 @@ def main():
     with open(sys.argv[1]) as f:
         raw_grid = [list(line.strip()) for line in f.readlines()]
 
-    dijkstra(raw_grid)
+    search_dijkstra(raw_grid)
     # a_star(raw_grid)
 
 
@@ -89,7 +89,7 @@ def candidate_points(p: Point, width: int, height: int) -> Iterable[Point]:
         yield Point(x, y + 1)
 
 
-def dijkstra(raw_grid):
+def search_dijkstra(raw_grid):
     height = len(raw_grid)
     width = len(raw_grid[0])
     start: Optional[Point] = None
@@ -102,8 +102,7 @@ def dijkstra(raw_grid):
         for _ in range(height)
     ]
 
-    visited = set()
-    tentative_distance = {}
+    other_starting_squares = []
     for y in range(height):
         for x in range(width):
             if raw_grid[y][x] == 'S':
@@ -114,10 +113,20 @@ def dijkstra(raw_grid):
                 z = 25
             else:
                 z = ord(raw_grid[y][x]) - ord('a')
+                if z == 0:
+                    other_starting_squares.append(Point(x, y))
             grid[y][x] = z
-            p = Point(x, y)
-            tentative_distance[p] = math.inf
 
+    original_dist = dijkstra(grid, start, end, width, height)
+    print(original_dist)
+
+    other_distances = [dijkstra(grid, other_start, end, width, height) for other_start in other_starting_squares]
+    print(min(original_dist, *other_distances))
+
+
+def dijkstra(grid: list[list[int]], start: Point, end: Point, width: int, height: int):
+    visited = set()
+    tentative_distance = defaultdict(lambda: sys.maxsize)
     tentative_distance[start] = 0
     heap = [(0, start)]
     steps = 0
@@ -127,12 +136,9 @@ def dijkstra(raw_grid):
         z = grid[y][x]
 
         steps += 1
-        if steps % 1000 == 0:
-            print(f'step: {steps}, # of states: {len(heap)}, z: {z}, dist: {dist}, visited #: {len(visited)}')
 
         if curr == end:
-            print(dist, f'(steps: {steps})')
-            break
+            return dist
 
         visited.add(curr)
 
@@ -141,6 +147,7 @@ def dijkstra(raw_grid):
                 if dist + 1 < tentative_distance[candidate]:
                     tentative_distance[candidate] = dist + 1
                     heappush(heap, (tentative_distance[candidate], candidate))
+    return sys.maxsize
 
 
 def a_star(raw_grid):
