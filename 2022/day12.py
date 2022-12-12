@@ -70,6 +70,77 @@ def main():
     with open(sys.argv[1]) as f:
         raw_grid = [list(line.strip()) for line in f.readlines()]
 
+    # dijkstra(raw_grid)
+    a_star(raw_grid)
+
+def dijkstra(raw_grid):
+    height = len(raw_grid)
+    width = len(raw_grid[0])
+    start: Optional[Point] = None
+    end: Optional[Point] = None
+
+    print(f'grid is {height} x {width}')
+
+    grid = [
+        [0] * width
+        for _ in range(height)
+    ]
+
+    visited = set()
+    tentative_distance = {}
+    for y in range(height):
+        for x in range(width):
+            if raw_grid[y][x] == 'S':
+                start = Point(x, y)
+                z = 0
+            elif raw_grid[y][x] == 'E':
+                end = Point(x, y)
+                z = 25
+            else:
+                z = ord(raw_grid[y][x]) - ord('a')
+            grid[y][x] = z
+            p = Point(x, y)
+            tentative_distance[p] = math.inf
+
+    tentative_distance[start] = 0
+    heap = [(0, start)]
+    steps = 0
+    while heap:
+        dist, curr = heappop(heap)
+        x, y = curr
+        z = grid[y][x]
+        candidate_points = []
+
+        steps += 1
+        if steps % 1000 == 0:
+            print(f'step: {steps}, # of states: {len(heap)}, z: {z}, dist: {dist}, visited #: {len(visited)}')
+
+        if curr == end:
+            print(dist, f'(steps: {steps})')
+            break
+
+        if x > 0:
+            candidate_points.append(Point(x - 1, y))
+
+        if x < width - 1:
+            candidate_points.append(Point(x + 1, y))
+
+        if y > 0:
+            candidate_points.append(Point(x, y - 1))
+
+        if y < height - 1:
+            candidate_points.append(Point(x, y + 1))
+
+        visited.add(curr)
+
+        for candidate in candidate_points:
+            if candidate not in visited and grid[candidate.y][candidate.x] <= z + 1:
+                if dist + 1 < tentative_distance[candidate]:
+                    tentative_distance[candidate] = dist + 1
+                heappush(heap, (tentative_distance[candidate], candidate))
+
+
+def a_star(raw_grid):
     height = len(raw_grid)
     width = len(raw_grid[0])
     start: Optional[Point] = None
@@ -105,9 +176,8 @@ def main():
             dist, p2 = min(candidates)
             distance_estimates[p1] = dist + distance_estimates[p2]
 
-    for y in range(height):
-        print([distance_estimates[Point(x, y)] for x in range(width)])
-    return
+    # for y in range(height):
+    #     print([distance_estimates[Point(x, y)] for x in range(width)])
 
 
     forward = False
