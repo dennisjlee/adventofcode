@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from copy import deepcopy
-from collections import deque
+from collections import deque, defaultdict
 from heapq import heapify, heappop, heappush
 from typing import NamedTuple, Optional
 import re
@@ -47,6 +47,25 @@ class State(NamedTuple):
 #     visited[y][x] = False
 
 
+def manhattan_distance(p1: Point, p2: Point):
+    return abs(p1.y - p2.y) + abs(p1.x - p2.x)
+
+
+# def estimated_distance(p: Point):
+#     z = grid[p.y][p.x]
+#     if z == 0:
+#         return manhattan_distance(p, start)
+#     points_below = locations_by_z[z - 1]
+#     best_dist = math.inf
+#     best = None
+#     for pb in points_below:
+#         dist = manhattan_distance(p, pb)
+#         if dist < best_dist:
+#             best_dist = dist
+#             best = pb
+#     return best_dist + estimated_distance(best)
+
+
 def main():
     with open(sys.argv[1]) as f:
         raw_grid = [list(line.strip()) for line in f.readlines()]
@@ -62,62 +81,110 @@ def main():
         [0] * width
         for _ in range(height)
     ]
-    visited = [
-        [False] * width
-        for _ in range(height)
-    ]
 
+    locations_by_z = defaultdict(set)
     for y in range(height):
         for x in range(width):
             if raw_grid[y][x] == 'S':
                 start = Point(x, y)
-                grid[y][x] = 0
+                z = 0
             elif raw_grid[y][x] == 'E':
                 end = Point(x, y)
-                grid[y][x] = 25
+                z = 25
             else:
-                grid[y][x] = ord(raw_grid[y][x]) - ord('a')
-    #
-    # path = search(grid, [start], end, visited, width, height)
-    # print(len(path), path)
+                z = ord(raw_grid[y][x]) - ord('a')
+            grid[y][x] = z
+            locations_by_z[z].add(Point(x, y))
 
-    def heuristic(p: Point, path_len: int):
-        z = grid[p.y][p.x]
-        manhattan_distance = abs(end.y - p.y) + abs(end.x - p.x)
-        return path_len + max(25 - z, manhattan_distance)
+    distance_estimates: dict[Point, int] = {}
+    for p in locations_by_z[0]:
+        distance_estimates[p] = manhattan_distance(p, start)
+    for z in range(1, 26):
+        for p1 in locations_by_z[z]:
+            candidates = [(manhattan_distance(p1, p2), p2) for p2 in locations_by_z[z-1]]
+            dist, p2 = min(candidates)
+            distance_estimates[p1] = dist + distance_estimates[p2]
 
-    states = [State(heuristic(start, 0), start, {start})]
-    heapify(states)
-    steps = 0
-    while states:
-        state = heappop(states)
-        steps += 1
-        if steps % 1000 == 0:
-            print(f'step: {steps}, # of states: {len(states)}, current cost: {state.cost}, path len: {len(state.visited)}')
-        x, y = state.current
-        z = grid[y][x]
-        visited = state.visited
+    for y in range(height):
+        print([distance_estimates[Point(x, y)] for x in range(width)])
+    return
 
-        if end.x == x and end.y == y:
-            print(len(visited) - 1)
-            break
 
-        candidate_points = []
-        if x > 0 and grid[y][x - 1] <= z + 1:
-            candidate_points.append(Point(x - 1, y))
+    forward = False
+    if forward:
+        def forward_heuristic(p: Point, path_len: int):
+            z = grid[p.y][p.x]
+            return path_len + max(25 - z, manhattan_distance(p, end))
 
-        if x < width - 1 and grid[y][x + 1] <= z + 1:
-            candidate_points.append(Point(x + 1, y))
+        states = [State(forward_heuristic(start, 0), start, {start})]
+        heapify(states)
+        steps = 0
+        while states:
+            state = heappop(states)
+            steps += 1
+            if steps % 1000 == 0:
+                print(f'step: {steps}, # of states: {len(states)}, current cost: {state.cost}, path len: {len(state.visited)}')
+            x, y = state.current
+            z = grid[y][x]
+            visited = state.visited
 
-        if y > 0 and grid[y - 1][x] <= z + 1:
-            candidate_points.append(Point(x, y - 1))
+            if end.x == x and end.y == y:
+                print(len(visited) - 1, 'steps:', steps)
+                break
 
-        if y < height - 1 and grid[y + 1][x] <= z + 1:
-            candidate_points.append(Point(x, y + 1))
+            candidate_points = []
+            if x > 0 and grid[y][x - 1] <= z + 1:
+                candidate_points.append(Point(x - 1, y))
 
-        for candidate in candidate_points:
-            if candidate not in visited:
-                heappush(states, State(heuristic(candidate, len(visited)), candidate, visited | {candidate}))
+            if x < width - 1 and grid[y][x + 1] <= z + 1:
+                candidate_points.append(Point(x + 1, y))
+
+            if y > 0 and grid[y - 1][x] <= z + 1:
+                candidate_points.append(Point(x, y - 1))
+
+            if y < height - 1 and grid[y + 1][x] <= z + 1:
+                candidate_points.append(Point(x, y + 1))
+
+            for candidate in candidate_points:
+                if candidate not in visited:
+                    heappush(states, State(forward_heuristic(candidate, len(visited)), candidate, visited | {candidate}))
+    else:
+        def backward_heuristic(p: Point, path_len: int):
+            return path_len + distance_estimates[p]
+
+        states = [State(backward_heuristic(end, 0), end, {end})]
+        heapify(states)
+        steps = 0
+        while states:
+            state = heappop(states)
+            steps += 1
+            x, y = state.current
+            z = grid[y][x]
+            if steps % 1000 == 0:
+                print(
+                    f'step: {steps}, # of states: {len(states)}, z: {z}, cost: {state.cost}, path len: {len(state.visited)}')
+            visited = state.visited
+
+            if start.x == x and start.y == y:
+                print(len(visited) - 1, f'(steps: {steps})')
+                break
+
+            candidate_points = []
+            if x > 0:
+                candidate_points.append(Point(x - 1, y))
+
+            if x < width - 1:
+                candidate_points.append(Point(x + 1, y))
+
+            if y > 0:
+                candidate_points.append(Point(x, y - 1))
+
+            if y < height - 1:
+                candidate_points.append(Point(x, y + 1))
+
+            for candidate in candidate_points:
+                if candidate not in visited and grid[candidate.y][candidate.x] >= z - 1:
+                    heappush(states, State(backward_heuristic(candidate, len(visited)), candidate, visited | {candidate}))
 
 
 if __name__ == '__main__':
