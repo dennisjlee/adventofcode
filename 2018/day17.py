@@ -18,7 +18,7 @@ class State(NamedTuple):
 
     def __repr__(self):
         return '\n'.join(
-            ''.join(self.grid.get(Point(x, y), '.') for x in range(self.min_x, self.max_x + 1))
+            ''.join(self.grid.get(Point(x, y), '.') for x in range(self.min_x - 5, self.max_x + 6))
             for y in range(self.max_y + 1)
         )
 
@@ -48,29 +48,41 @@ def main():
     max_y = max(p.y for p in grid.keys())
     min_x = min(p.x for p in grid.keys())
     max_x = max(p.x for p in grid.keys())
-    print(len(grid))
-    print(min_x, min_y, max_x, max_y)
 
-    # for y in range(min_y, max_y + 1):
-    #     line_out = []
-    #     for x in range(min_x, max_x + 1):
-    #         if y == min_y and x == 500:
-    #             line_out.append('+')
-    #         else:
-    #             line_out.append(grid.get(Point(x, y), '.'))
-    #     print(''.join(line_out))
-
-    print('area', (max_x - min_x) * (max_y - min_y))
     starting_point = Point(x=500, y=0)
     grid[starting_point] = '+'
     state = State(grid, min_x, max_x, min_y, max_y)
-    iterate(state, [starting_point])
+    iterate(state, [starting_point], verbose=False)
+
+    print(sum(1 for p, v in state.grid.items() if min_y <= p.y <= max_y and v in WATER_TILES))
+    print(sum(1 for p, v in state.grid.items() if min_y <= p.y <= max_y and v == '~'))
 
 
-def iterate(state: State, current_flow_points: list[Point]):
+WATER_TILES = {'|', '~'}
+
+FLOWABLE_TILES = {'|', None}
+
+FIXED_TILES = {'#', '~'}
+
+
+def iterate(state: State, current_flow_points: list[Point], verbose=True):
+    step = 0
+    previous_flow_points = set()
     while current_flow_points:
+        step += 1
         current = current_flow_points.pop()
-        print(state, '\n', current, '\n\n')
+        if state.grid.get(current) == '~':
+            continue
+        if current in previous_flow_points:
+            zzz = 1
+        else:
+            previous_flow_points.add(current)
+
+        if step % 1000 == 0:
+            print('step', step, '# of flow points', len(current_flow_points))
+            if verbose:
+                print(state, '\n', current, '\n\n')
+                zzz = 1
         for next_y in range(current.y + 1, state.max_y + 1):
             next_point = Point(current.x, next_y)
             if next_point in state.grid:
@@ -83,21 +95,24 @@ def iterate(state: State, current_flow_points: list[Point]):
 
         if next_point:
             tile_below = state.grid.get(next_point)
-            # we should be on top of clay or standing water
-            assert tile_below in {'#', '~'}
+            if tile_below not in FIXED_TILES:
+                continue  # flowing onto already flowing water - this will be handled by another flow point
 
+            # we should be on top of clay or standing water
             lx = next_point.x - 1
             rx = next_point.x + 1
             blocked_left = False
             blocked_right = False
-            for lx in range(next_point.x - 1, state.min_x - 2, -1):
-                if state.grid.get(Point(lx, next_point.y)) != '#' or Point(lx, next_point.y - 1) in state.grid:
+            for lx in range(next_point.x - 1, state.min_x - 5, -1):
+                if state.grid.get(Point(lx, next_point.y)) not in FIXED_TILES or \
+                        state.grid.get(Point(lx, next_point.y - 1)) not in FLOWABLE_TILES:
                     break
             if state.grid.get(Point(lx, next_point.y - 1)) == '#':
                 blocked_left = True
 
-            for rx in range(next_point.x + 1, state.max_x + 1):
-                if state.grid.get(Point(rx, next_point.y)) != '#' or Point(rx, next_point.y - 1) in state.grid:
+            for rx in range(next_point.x + 1, state.max_x + 5):
+                if state.grid.get(Point(rx, next_point.y)) not in FIXED_TILES or \
+                        state.grid.get(Point(rx, next_point.y - 1)) not in FLOWABLE_TILES:
                     break
             if state.grid.get(Point(rx, next_point.y - 1)) == '#':
                 blocked_right = True
@@ -110,9 +125,15 @@ def iterate(state: State, current_flow_points: list[Point]):
                 for x in range(lx + 1, rx):
                     state.grid[Point(x, next_point.y - 1)] = '|'
                 if not blocked_left:
-                    current_flow_points.append(Point(lx, next_point.y - 1))
+                    left_overflow = Point(lx, next_point.y - 1)
+                    state.grid[left_overflow] = '|'
+                    current_flow_points.append(left_overflow)
                 if not blocked_right:
-                    current_flow_points.append(Point(rx, next_point.y - 1))
+                    right_overflow = Point(rx, next_point.y - 1)
+                    state.grid[right_overflow] = '|'
+                    current_flow_points.append(right_overflow)
+    if verbose:
+        print(state)
 
 
 if __name__ == '__main__':
