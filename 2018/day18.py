@@ -1,7 +1,6 @@
 from __future__ import annotations
 import sys
-from typing import NamedTuple, Literal
-
+from typing import NamedTuple, Literal, Iterable
 
 FORWARD_DIRECTIONS = [
     (0, 1),
@@ -82,15 +81,31 @@ def main():
 def simulate(grid: Grid, steps: int) -> int:
     acre_map = build_graph(grid)
 
+    hashes = {}
     for i in range(steps):
-        if i % 1000 == 0:
-            print('step', i)
         if not iterate(acre_map):
             print(f'no more changes after step {i}!')
             break
-    wood_count = sum(1 for acre in acre_map.values() if acre.contents_now == TREES)
-    lumberyard_count = sum(1 for acre in acre_map.values() if acre.contents_now == LUMBER)
-    return wood_count * lumberyard_count
+        acre_hash = hash_acre_map(acre_map)
+        if acre_hash in hashes:
+            print(f'Duplicate hash after step {i}, prior step was {hashes[acre_hash]}')
+            cycle_start_index = hashes[acre_hash]
+            cycle_length = i - cycle_start_index
+            cycle_offset = (steps - 1 - cycle_start_index) % cycle_length
+            result_hash = next(k for k, v in hashes.items() if v == cycle_start_index + cycle_offset)
+            wood_count = sum(1 for _, contents in result_hash if contents == TREES)
+            lumberyard_count = sum(1 for _, contents in result_hash if contents == LUMBER)
+            return wood_count * lumberyard_count
+        else:
+            hashes[acre_hash] = i
+    else:
+        wood_count = sum(1 for acre in acre_map.values() if acre.contents_now == TREES)
+        lumberyard_count = sum(1 for acre in acre_map.values() if acre.contents_now == LUMBER)
+        return wood_count * lumberyard_count
+
+
+def hash_acre_map(acre_map: dict[Point, Acre]) -> Iterable[tuple[Point, AcreContents]]:
+    return tuple(sorted((p, a.contents_now) for p, a in acre_map.items()))
 
 
 def iterate(acre_map: dict[Point, Acre]) -> bool:
