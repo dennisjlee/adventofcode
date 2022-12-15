@@ -1,0 +1,26 @@
+label17:
+  reg[4] = (reg[4] + 2)(reg[4] + 2)*19*11 // 836
+  reg[2] = (reg[2] + 5) * 22 + 12 // 122
+  reg[4] += reg[2] // 958
+  if (!reg[0]) {
+    // part 1
+label1:
+    reg[5] = 1
+    do {
+      reg[3] = 1
+      do {
+        if (reg[5] * reg[3] == reg[4]) {
+          reg[0] += reg[5]
+        } else {
+          reg[3] += 1
+        }
+      } while (reg[3] <= reg[4]);
+      reg[5] += 1
+    } while (reg[5] <= reg[4])
+  } else {
+    // part 2
+    reg[2] = (27 * 28 + 29) * 30 * 14 * 32 // 10550400
+    reg[4] += reg[2] // 10551236
+    reg[0] = 0
+    goto label1
+  }
