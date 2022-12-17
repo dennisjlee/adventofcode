@@ -3,8 +3,7 @@ import re
 import sys
 from collections import deque, defaultdict
 from heapq import heappop, heappush
-from typing import NamedTuple, Optional, Iterable
-from copy import deepcopy
+from typing import NamedTuple, Optional
 
 
 class Node(NamedTuple):
@@ -20,19 +19,6 @@ class State(NamedTuple):
     time_remaining: int
     score: int
     curr_name: str
-    visited: frozenset[str]
-
-
-class Visitor(NamedTuple):
-    next_node_name: str
-    time_remaining: int
-
-
-class State2(NamedTuple):
-    time_remaining: int
-    score: int
-    visitor1: Visitor
-    visitor2: Visitor
     visited: frozenset[str]
 
 
@@ -82,11 +68,11 @@ def main():
     # nodes N1 and N2 is defined as the shortest path between N1 and N2 in the base graph.
     metagraph: dict[str, Node] = {}
     for node in graph.values():
-        new_edges = find_paths_to_relevant_nodes(graph, node)
-        metanode = Node(node.name, node.flow_rate, new_edges)
-        metagraph[metanode.name] = metanode
+        if node.flow_rate > 0 or node.name == 'AA':
+            new_edges = find_paths_to_relevant_nodes(graph, node)
+            metanode = Node(node.name, node.flow_rate, new_edges)
+            metagraph[metanode.name] = metanode
 
-    print(metagraph)
     part1(metagraph)
     print()
     part2(metagraph)
@@ -121,21 +107,38 @@ def part1(metagraph: dict[str, Node]):
     print(best_score)
 
 
+class Visitor(NamedTuple):
+    next_node_name: str
+    time_remaining: int
+
+
+class State2(NamedTuple):
+    score: int
+    time_remaining: int
+    visitor1: Visitor
+    visitor2: Visitor
+    visited: frozenset[str]
+
+    def lower_bound(self, metagraph: dict[str, Node]):
+        return self.score - sum(node.flow_rate * (self.time_remaining - 2)
+                                for name, node in metagraph.items()
+                                if name not in self.visited)
+
+
 def part2(metagraph: dict[str, Node]):
     # part 2 - one person and one elephant for 26 min
-    queue = [State2(26, 0, Visitor('AA', 0), Visitor('AA', 0), frozenset({'AA'}))]
+    heap = [State2(0, 26, Visitor('AA', 0), Visitor('AA', 0), frozenset({'AA'}))]
     best_score = 0
     step = 0
-    while queue:
+    # in this version, we track the score as a negative number to make it easier to use
+    # heapq
+    while heap:
         step += 1
-        state = queue.pop()
+        state = heappop(heap)
         if step % 100_000 == 0:
-            print(f'step {step}, # states {len(queue)}, current state time remaining {state.time_remaining}, best score {best_score}')
+            print(f'step {step}, # states {len(heap)}, current state time remaining {state.time_remaining}, best score {best_score}')
 
-        upper_bound = state.score + sum(node.flow_rate * state.time_remaining
-                                        for name, node in metagraph.items()
-                                        if name not in state.visited)
-        if upper_bound < best_score:
+        if state.lower_bound(metagraph) > best_score:
             continue
 
         curr1 = metagraph[state.visitor1.next_node_name]
@@ -162,16 +165,15 @@ def part2(metagraph: dict[str, Node]):
                     neighbor2 = metagraph[neighbor_name2]
                     time_remaining = state.time_remaining
                     new_score = (
-                        state.score +
-                        (time_remaining - cost1) * neighbor1.flow_rate +
+                        state.score -
+                        (time_remaining - cost1) * neighbor1.flow_rate -
                         (time_remaining - cost2) * neighbor2.flow_rate
                     )
 
-                    queue.append(State2(time_remaining - time_step,
-                                        new_score,
-                                        new_visitor1,
-                                        new_visitor2,
-                                        state.visited.union({neighbor_name1, neighbor_name2})))
+                    new_state = State2(new_score, time_remaining - time_step, new_visitor1, new_visitor2,
+                                       state.visited.union({neighbor_name1, neighbor_name2}))
+                    if new_state.lower_bound(metagraph) < best_score:
+                        heappush(heap, new_state)
         elif options1:
             for neighbor_name1, cost1 in options1:
                 time_step = max(1, min(cost1, state.visitor2.time_remaining))
@@ -179,13 +181,12 @@ def part2(metagraph: dict[str, Node]):
                 new_visitor2 = Visitor(state.visitor2.next_node_name, state.visitor2.time_remaining - time_step)
                 neighbor1 = metagraph[neighbor_name1]
                 time_remaining = state.time_remaining
-                new_score = state.score + (time_remaining - cost1) * neighbor1.flow_rate
+                new_score = state.score - (time_remaining - cost1) * neighbor1.flow_rate
 
-                queue.append(State2(time_remaining - time_step,
-                                    new_score,
-                                    new_visitor1,
-                                    new_visitor2,
-                                    state.visited.union({neighbor_name1})))
+                new_state = State2(new_score, time_remaining - time_step, new_visitor1, new_visitor2,
+                                   state.visited.union({neighbor_name1}))
+                if new_state.lower_bound(metagraph) < best_score:
+                    heappush(heap, new_state)
         elif options2:
             for neighbor_name2, cost2 in options2:
                 time_step = max(1, min(cost2, state.visitor1.time_remaining))
@@ -193,27 +194,24 @@ def part2(metagraph: dict[str, Node]):
                 new_visitor2 = Visitor(neighbor_name2, cost2 - time_step)
                 neighbor2 = metagraph[neighbor_name2]
                 time_remaining = state.time_remaining
-                new_score = state.score + (time_remaining - cost2) * neighbor2.flow_rate
+                new_score = state.score - (time_remaining - cost2) * neighbor2.flow_rate
 
-                queue.append(State2(time_remaining - time_step,
-                                    new_score,
-                                    new_visitor1,
-                                    new_visitor2,
-                                    state.visited.union({neighbor_name2})))
+                new_state = State2(new_score, time_remaining - time_step, new_visitor1, new_visitor2,
+                                   state.visited.union({neighbor_name2}))
+                if new_state.lower_bound(metagraph) < best_score:
+                    heappush(heap, new_state)
         elif state.time_remaining > 0:
             time_step = max(1, min(state.visitor1.time_remaining, state.visitor2.time_remaining))
             new_visitor1 = Visitor(state.visitor1.next_node_name, state.visitor1.time_remaining - time_step)
             new_visitor2 = Visitor(state.visitor2.next_node_name, state.visitor2.time_remaining - time_step)
-            queue.append(State2(state.time_remaining - time_step,
-                                state.score,
-                                new_visitor1,
-                                new_visitor2,
-                                state.visited))
+            new_state = State2(state.score, state.time_remaining - time_step, new_visitor1, new_visitor2, state.visited)
+            if new_state.lower_bound(metagraph) < best_score:
+                heappush(heap, new_state)
         else:
             # we have no time remaining - run out the clock and check the score
-            if state.score > best_score:
+            if state.score < best_score:
                 best_score = state.score
-    print(best_score)
+    print(-best_score)
 
 
 if __name__ == '__main__':
