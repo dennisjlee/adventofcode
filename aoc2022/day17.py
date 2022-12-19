@@ -1,7 +1,8 @@
 from __future__ import annotations
 import re
 import sys
-from typing import NamedTuple, Optional
+from itertools import cycle
+from typing import NamedTuple, Optional, Iterable
 from copy import deepcopy
 
 
@@ -10,98 +11,105 @@ class Point(NamedTuple):
     y: int
 
 
-HORIZONTAL_LINE = frozenset([
+class Shape(NamedTuple):
+    height: int
+    relative_points: frozenset[Point]
+
+
+HORIZONTAL_LINE = Shape(1, frozenset([
     Point(0, 0),
     Point(1, 0),
     Point(2, 0),
     Point(3, 0),
-])
+]))
 
-CROSS = frozenset([
+CROSS = Shape(3, frozenset([
     Point(0, 1),
     Point(1, 0),
     Point(1, 1),
     Point(1, 2),
     Point(2, 1),
-])
+]))
 
-RIGHT_ANGLE = frozenset([
+RIGHT_ANGLE = Shape(3, frozenset([
     Point(0, 0),
     Point(1, 0),
     Point(2, 0),
     Point(2, 1),
     Point(2, 2),
-])
+]))
 
-VERTICAL_LINE = frozenset([
+VERTICAL_LINE = Shape(4, frozenset([
     Point(0, 0),
     Point(0, 1),
     Point(0, 2),
     Point(0, 3),
-])
+]))
 
-SQUARE = [
+SQUARE = Shape(2, frozenset([
     Point(0, 0),
     Point(1, 0),
     Point(0, 1),
     Point(1, 1),
-]
+]))
+
+SHAPES = [HORIZONTAL_LINE, CROSS, RIGHT_ANGLE, VERTICAL_LINE, SQUARE]
 
 
-class Shape:
-    relative_points: list[Point]
-    bottom_left: Point
-
-    def __init__(self, relative_points: list[Point], bottom_left: Point):
-        self.relative_points = relative_points
-        self.bottom_left = bottom_left
+def get_shape_points(lower_left: Point, shape: Shape):
+    return [
+        Point(lower_left.x + p.x, lower_left.y + p.y)
+        for p in shape.relative_points
+    ]
 
 
+def print_grid(occupied_spaces: set[Point]):
+    max_y = max(p.y for p in occupied_spaces) if occupied_spaces else 1
+    for y in range(max_y, -1, -1):
+        row = ''.join('#' if Point(x, y) in occupied_spaces else '.'
+                      for x in range(7))
+        print(row)
+    print('\n')
 
 def main():
     with open(sys.argv[1]) as f:
         jet_pattern = f.read().strip()
 
-    print(len(jet_pattern))
+    occupied_spaces: set[Point] = set()
+    jet_iter = cycle([-1 if j == '<' else 1 for j in jet_pattern])
 
-def iterate(state: State, source: Point, verbose=True, include_floor=False):
-    step = 0
-    sand_landed = True
+    def all_unoccupied(points: Iterable[Point]) -> bool:
+        return all(
+            (p not in occupied_spaces and
+             0 <= p.x < 7 and
+             p.y >= 0)
+            for p in points
+        )
+    verbose = False
 
-    def value(pt: Point) -> str:
-        if include_floor and pt.y == state.max_y + 2:
-            return '#'
-        return state.grid.get(pt)
-
-    limit_y = state.max_y + (2 if include_floor else 0)
-
-    while sand_landed:
-        step += 1
-        # if step % 1000 == 0:
-        #     print('step', step, '# of flow points', len(current_flow_points))
-        #     if verbose:
-        #         print(state, '\n', current, '\n\n')
-        #         zzz = 1
-        sand_landed = False
-        x = source.x
-        y = source.y
-        while y <= limit_y:
-            if value(down := Point(x, y + 1)) is None:
-                x, y = down
-            elif value(downleft := Point(x - 1, y + 1)) is None:
-                x, y = downleft
-            elif value(downright := Point(x + 1, y + 1)) is None:
-                x, y = downright
+    max_y = 0
+    for i in range(2022):
+        if verbose:
+            print_grid(occupied_spaces)
+        shape = SHAPES[i % len(SHAPES)]
+        x = 2
+        y = max_y + 3
+        curr_points = get_shape_points(Point(x, y), shape)
+        while True:
+            dx = next(jet_iter)
+            next_points = get_shape_points(Point(x+dx, y), shape)
+            if all_unoccupied(next_points):
+                curr_points = next_points
+                x += dx
+            next_points = get_shape_points(Point(x, y - 1), shape)
+            if all_unoccupied(next_points):
+                curr_points = next_points
+                y -= 1
             else:
-                # fully blocked!
-                p = Point(x, y)
-                if p != source:
-                    sand_landed = True
-                state.grid[p] = 'o'
+                occupied_spaces.update(curr_points)
+                max_y = max(max_y, y + shape.height)
                 break
-
-    if verbose:
-        print(state)
+    print(max_y)
 
 
 if __name__ == '__main__':
