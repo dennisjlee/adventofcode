@@ -13,10 +13,8 @@ class Instruction(NamedTuple):
     b: int
     c: int
 
-def main():
-    with open(sys.argv[1]) as f:
-        lines = [line.strip() for line in f.readlines()]
 
+def parse_lines(lines: list[str]) -> tuple[int, list[Instruction]]:
     _, ip_index = lines[0].split()
     ip_index = int(ip_index)
 
@@ -24,6 +22,15 @@ def main():
     for line in lines[1:]:
         name, a, b, c = line.split()
         instructions.append(Instruction(name, int(a), int(b), int(c)))
+
+    return ip_index, instructions
+
+
+def main():
+    with open(sys.argv[1]) as f:
+        lines = [line.strip() for line in f.readlines()]
+
+    ip_index, instructions = parse_lines(lines)
 
     registers = [0] * 6
 
