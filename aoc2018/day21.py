@@ -15,11 +15,8 @@ def main():
     ip_index, instructions = parse_lines(lines)
     registers = [0] * 6
 
-    # slow way
+    # for exploration only - day21.js has the solution
     execute(instructions, ip_index, registers, verbose=False)
-    # print(registers)
-
-
 
 
 if __name__ == '__main__':

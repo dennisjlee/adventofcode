@@ -1,4 +1,4 @@
-function f(r0) {
+function f() {
   let [r1, r2, r3, r5] = [0, 0, 0, 0];
   r1 = 123
   do {
@@ -6,6 +6,8 @@ function f(r0) {
     r1 = (r1 === 72) ? 1 : 0
   } while (r1 === 0)
   r1 = 0
+
+  const r1Values = [];
 
   while (true) {
     r5 = r1 | 65536          // 1 followed by 16x 0
@@ -26,9 +28,16 @@ function f(r0) {
       r2 = Math.floor(r5 / 256);
       r5 = r2;
     }
-    console.log(r1);
-    break;
+    if (r1Values.includes(r1)) {
+      console.log('part2:', r1Values[r1Values.length - 1]);
+      return;
+    } else {
+      r1Values.push(r1);
+    }
+    if (r1Values.length === 1) {
+      console.log('part1:', r1Values[0]);
+    }
   }
 }
 
-f(0);
+f();
