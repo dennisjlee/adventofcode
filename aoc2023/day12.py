@@ -40,7 +40,7 @@ def count_options(pattern: str, group_sizes: tuple[int, ...]):
     max_index = len(pattern) - first_group - sum(rest_groups) - len(rest_groups)
     for start in range(max_index + 1):
         end = start + first_group
-        if '.' not in pattern[start:end] and (end == len(pattern) or pattern[end] != '#'):
+        if pattern.find('.', start, end) == -1 and (end == len(pattern) or pattern[end] != '#'):
             total_options += count_options(pattern[end + 1:], tuple(rest_groups))
         if pattern[start] == '#':
             # We can't just walk by and ignore a '#', it has to be included in our matching option
