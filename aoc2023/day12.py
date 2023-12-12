@@ -25,13 +25,6 @@ class SpringRow(NamedTuple):
 
 @functools.cache
 def count_options(pattern: str, group_sizes: tuple[int, ...]):
-    # short circuits
-    required_damaged = sum(group_sizes)
-    total_damaged = sum(1 for c in pattern if c == '#')
-    potential_damaged = sum(1 for c in pattern if c != '.')
-    if total_damaged > required_damaged or potential_damaged < required_damaged:
-        return 0
-
     if not group_sizes:
         return 0 if '#' in pattern else 1
     first_group, *rest_groups = group_sizes
