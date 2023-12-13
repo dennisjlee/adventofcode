@@ -21,22 +21,24 @@ NANOBOT_REGEX = re.compile(r'pos=<(.*?)>, r=(\d+)')
 
 
 class Nanobot:
+    id: int
     pos: Point3D
     rad: int
     neighbors: set[Nanobot]
 
-    def __init__(self, pos: Point3D, rad: int):
+    def __init__(self, id: int, pos: Point3D, rad: int):
+        self.id = id
         self.pos = pos
         self.rad = rad
         self.neighbors = set()
 
     @staticmethod
-    def parse(line: str) -> Nanobot:
+    def parse(id: int, line: str) -> Nanobot:
         match = NANOBOT_REGEX.match(line)
-        return Nanobot(Point3D.parse(match.group(1)), int(match.group(2)))
+        return Nanobot(id, Point3D.parse(match.group(1)), int(match.group(2)))
 
     def __repr__(self):
-        return f'Nanobot(pos={self.pos}, rad={self.rad}, neighbors={[n.pos for n in self.neighbors]})'
+        return f'Nanobot(id={self.id}, pos={self.pos}, rad={self.rad}, neighbors={sorted([n.id for n in self.neighbors])})'
 
     def overlaps(self, other: Nanobot):
         return manhattan_distance(self.pos, other.pos) <= (self.rad + other.rad)
@@ -48,7 +50,7 @@ def manhattan_distance(p1: Point3D, p2: Point3D):
 
 def main():
     with open(sys.argv[1]) as f:
-        nanobots = [Nanobot.parse(line) for line in f.readlines()]
+        nanobots = [Nanobot.parse(i, line) for i, line in enumerate(f.readlines())]
 
     strongest = max(nanobots, key=lambda n: n.rad)
     print(strongest)
@@ -63,8 +65,16 @@ def main():
                 n2.neighbors.add(n1)
 
     most_neighboring = sorted(nanobots, key=lambda n: len(n.neighbors), reverse=True)
+    neighbor_ids = []
     for n in most_neighboring:
-        print(f'Nanobot({n.pos}, rad={n.rad}, neighbor_count={len(n.neighbors)})')
+        # print(n)
+        neighbor_ids.append({neighbor.id for neighbor in n.neighbors} | {n.id})
+    for i, s1 in enumerate(neighbor_ids):
+        for j in range(i + 1, len(neighbor_ids)):
+            s2 = neighbor_ids[j]
+            if s1 == s2:
+                print(i, j, len(s1))
+
 
 
 """
