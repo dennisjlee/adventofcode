@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 import sys
+from math import floor, ceil
 from typing import NamedTuple, Optional, Literal
 
 
 class Point3D(NamedTuple):
-    x: int
-    y: int
-    z: int
+    x: int | float
+    y: int | float
+    z: int | float
 
     @staticmethod
     def parse(s: str) -> Point3D:
@@ -43,9 +44,16 @@ class Nanobot:
     def overlaps(self, other: Nanobot):
         return manhattan_distance(self.pos, other.pos) <= (self.rad + other.rad)
 
+    def contains(self, point: Point3D):
+        return manhattan_distance(self.pos, point) <= self.rad
+
 
 def manhattan_distance(p1: Point3D, p2: Point3D):
     return abs(p1.y - p2.y) + abs(p1.x - p2.x) + abs(p1.z - p2.z)
+
+
+def count_reachable(nanobots: list[Nanobot], point: Point3D) -> int:
+    return sum(1 for n in nanobots if n.contains(point))
 
 
 def main():
@@ -69,12 +77,22 @@ def main():
     for n in most_neighboring:
         # print(n)
         neighbor_ids.append({neighbor.id for neighbor in n.neighbors} | {n.id})
-    for i, s1 in enumerate(neighbor_ids):
-        for j in range(i + 1, len(neighbor_ids)):
-            s2 = neighbor_ids[j]
-            if s1 == s2:
-                print(i, j, len(s1))
 
+    denominator = strongest.rad
+    total_weights = sum(denominator / n.rad for n in nanobots)
+    weighted_avg = Point3D(
+        sum(n.pos.x * denominator / n.rad for n in nanobots) / total_weights,
+        sum(n.pos.y * denominator / n.rad for n in nanobots) / total_weights,
+        sum(n.pos.z * denominator / n.rad for n in nanobots) / total_weights,
+    )
+
+    for x in [int(floor(weighted_avg.x)), int(ceil(weighted_avg.x))]:
+        for y in [int(floor(weighted_avg.y)), int(ceil(weighted_avg.y))]:
+            for z in [int(floor(weighted_avg.z)), int(ceil(weighted_avg.z))]:
+                candidate = Point3D(x, y, z)
+                print(candidate,
+                      count_reachable(nanobots, candidate),
+                      manhattan_distance(candidate, Point3D(0,0,0)))
 
 
 """
