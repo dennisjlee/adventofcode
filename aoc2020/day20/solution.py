@@ -180,15 +180,15 @@ def construct_tile_arrangement(corner_ids, edge_map, tiles):
         if len(matches) == 1:
             tile_id, edge_id = matches[0]
             tile = tiles[tile_id]
-            tile.neighbors[edge_id] = None
+            tile.neighbors_bounded[edge_id] = None
         else:
             assert len(matches) == 2, "Unexpected situation with more than 2 matches!"
             tile_id1, edge_id1 = matches[0]
             tile_id2, edge_id2 = matches[1]
-            tiles[tile_id1].neighbors[edge_id1] = matches[1]
-            tiles[tile_id2].neighbors[edge_id2] = matches[0]
+            tiles[tile_id1].neighbors_bounded[edge_id1] = matches[1]
+            tiles[tile_id2].neighbors_bounded[edge_id2] = matches[0]
     nw_corner = corner_tiles[0]
-    while not (nw_corner.neighbors[N] is None and nw_corner.neighbors[W] is None):
+    while not (nw_corner.neighbors_bounded[N] is None and nw_corner.neighbors_bounded[W] is None):
         nw_corner = nw_corner.rotated(1)
     tile_arrangement[0][0] = nw_corner
     prev_tile = nw_corner
@@ -204,7 +204,7 @@ def construct_tile_arrangement(corner_ids, edge_map, tiles):
 
 
 def get_east_neighbor(prev_tile, tiles):
-    next_tile_id, next_edge_id = prev_tile.neighbors[E]
+    next_tile_id, next_edge_id = prev_tile.neighbors_bounded[E]
     next_tile = tiles[next_tile_id]
     # rotate
     if next_edge_id != W:
@@ -218,7 +218,7 @@ def get_east_neighbor(prev_tile, tiles):
 
 
 def get_south_neighbor(prev_tile, tiles):
-    next_tile_id, next_edge_id = prev_tile.neighbors[S]
+    next_tile_id, next_edge_id = prev_tile.neighbors_bounded[S]
     next_tile = tiles[next_tile_id]
     # rotate
     if next_edge_id != N:

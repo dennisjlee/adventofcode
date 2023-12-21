@@ -34,7 +34,7 @@ def main():
         queue = [State(start, Counter(['start']), ['start'])]
         while queue:
             current = queue.pop()
-            for neighbor in current.cave.neighbors:
+            for neighbor in current.cave.neighbors_bounded:
                 if neighbor == end:
                     valid_paths.add(tuple(current.path))
                     continue

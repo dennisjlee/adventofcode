@@ -108,7 +108,7 @@ def iterate_seats(seats_by_coord, occupied_limit):
         if seat.occupied_now:
             count = 0
             seat.occupied_next = True
-            for neighbor in seat.neighbors:
+            for neighbor in seat.neighbors_bounded:
                 if neighbor.occupied_now:
                     count += 1
                 if count >= occupied_limit:
@@ -117,7 +117,7 @@ def iterate_seats(seats_by_coord, occupied_limit):
                     break
         else:
             seat.occupied_next = True
-            for neighbor in seat.neighbors:
+            for neighbor in seat.neighbors_bounded:
                 if neighbor.occupied_now:
                     seat.occupied_next = False
                     break
