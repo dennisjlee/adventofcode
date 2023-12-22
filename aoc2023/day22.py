@@ -38,8 +38,9 @@ class Brick:
 
     x_range: Range
     y_range: Range
-    edges_up: list[Brick]
-    edges_down: list[Brick]
+    edges_up: set[Brick]
+    edges_down: set[Brick]
+    would_fall: set[Brick] | None
 
     def __init__(self, index: int, start: Point3D, end: Point3D):
         self.index = index
@@ -49,8 +50,9 @@ class Brick:
         self.x_range = Range.create(self.min_x, self.max_x)
         self.y_range = Range.create(self.min_y, self.max_y)
 
-        self.edges_up = []
-        self.edges_down = []
+        self.edges_up = set()
+        self.edges_down = set()
+        self.would_fall = None
 
     @staticmethod
     def parse(index: int, s: str) -> Brick:
@@ -100,12 +102,11 @@ def main():
     with open(sys.argv[1]) as f:
         bricks = [Brick.parse(i, line.strip()) for i, line in enumerate(f.readlines())]
 
-    sorted_bricks = deque(sorted(bricks, key=lambda br: br.min_z))
-
+    z_sorted_bricks = deque(sorted(bricks, key=lambda br: br.min_z))
     landed_bricks: list[Brick] = []
 
-    while sorted_bricks:
-        b = sorted_bricks.popleft()
+    while z_sorted_bricks:
+        b = z_sorted_bricks.popleft()
         overlaps = [other for other in landed_bricks if b.overlaps_xy(other)]
         if not overlaps:
             landed_bricks.append(b.drop_to(1))
@@ -114,18 +115,38 @@ def main():
             dropped = b.drop_to(max_z + 1)
             for other in overlaps:
                 if other.max_z == max_z:
-                    other.edges_up.append(dropped)
-                    dropped.edges_down.append(other)
+                    other.edges_up.add(dropped)
+                    dropped.edges_down.add(other)
             landed_bricks.append(dropped)
 
+    # part 1
     safe_disintegration_count = 0
     for b in landed_bricks:
-        if not len(b.edges_up):
+        if not b.edges_up:
             safe_disintegration_count += 1
         elif all(len(other.edges_down) > 1 for other in b.edges_up):
             safe_disintegration_count += 1
-
     print(safe_disintegration_count)
+
+    # part 2
+    fall_count = 0
+    for b in landed_bricks:
+        if b.edges_up:
+            fallen_bricks = set()
+            find_fallen_bricks(b, fallen_bricks)
+            fall_count += len(fallen_bricks) - 1 # don't count itself
+    print(fall_count)
+
+
+def find_fallen_bricks(brick: Brick, fallen_bricks: set[Brick]):
+    fallen_bricks.add(brick)
+    new_falls = []
+    for brick_above in brick.edges_up:
+        if len(brick_above.edges_down - fallen_bricks) == 0:
+            fallen_bricks.add(brick_above)
+            new_falls.append(brick_above)
+    for brick_above in new_falls:
+        find_fallen_bricks(brick_above, fallen_bricks)
 
 
 if __name__ == '__main__':
