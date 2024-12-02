@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import sys
-from bisect import insort_left
-from collections import defaultdict
-from typing import NamedTuple
 import re
+import sys
+from collections import defaultdict, deque
+from typing import NamedTuple, Iterable
 
 
 class Vector(NamedTuple):
@@ -57,7 +56,7 @@ VECTOR_LOOKUP = {
 }
 
 
-def part1(instructions: list[Instruction]):
+def part1(instructions: list[Instruction], verbose=False):
     curr = Point(0, 0)
     dug_points: set[Point] = {curr}
     for instr in instructions:
@@ -88,26 +87,48 @@ def part1(instructions: list[Instruction]):
                         stack.append(Point(x, y))
 
     print(total_points - len(outside_points))
+    if verbose:
+        for y in range(min_y, max_y + 1):
+            def c(x):
+                if x == 0 and y == 0:
+                    return '@'
+                elif Point(x, y) in dug_points:
+                    return '#'
+                else:
+                    return '.'
+            line = ''.join([c(x) for x in range(min_x, max_x + 1)])
+            print(line)
+
+
+class IndexedCorners:
+    def __init__(self, corners: list[Point]):
+        self.corners = corners
+
+    def remove(self, corner: Point):
+        pass
+        # self.corners_by_x[corner.x].remove(corner)
+        # self.corners_by_x[corner.y].remove(corner)
 
 
 def part2(instructions: list[Instruction]):
     curr = Point(0, 0)
-    corners: set[Point] = {curr}
+    corners: list[Point] = [curr]
     for instr in instructions:
         vec = instr.vector
         curr = Point(curr.x + instr.magnitude * vec.dx, curr.y + instr.magnitude * vec.dy)
-        corners.add(curr)
+        corners.append(curr)
 
-    corners_by_y: dict[int, list[Point]] = defaultdict(list)
-    corners_by_x: dict[int, list[Point]] = defaultdict(list)
-    for corner in corners:
-        insort_left(corners_by_x[corner.x], corner)
-        insort_left(corners_by_y[corner.y], corner)
+    n = len(corners)
+    start_index = min(range(n), key=lambda i: corners[i])
+    print(corners[start_index], corners[(start_index + 1) % n], corners[(start_index - 1) % n], corners[(start_index - 2) % n])
 
-    print()
-    print('\n'.join(repr((x, corners)) for x, corners in sorted(corners_by_x.items())))
-    print()
-    print('\n'.join(repr((y, corners)) for y, corners in sorted(corners_by_y.items())))
+
+    # print()
+    # print('\n'.join(repr((x, corners)) for x, corners in sorted(corners_by_x.items())))
+    # print()
+    # print('\n'.join(repr((y, corners)) for y, corners in sorted(corners_by_y.items())))
+    # print()
+    # print('\n'.join(repr(c) for c in sorted_corners))
 
 
 def main():
@@ -115,8 +136,9 @@ def main():
         lines = f.readlines()
 
     instructions1 = [Instruction.parse1(line) for line in lines]
-    part1(instructions1)
+    part1(instructions1, True)
     part2(instructions1)
+    # print('\n'.join([repr(Instruction.parse2(line)) for line in lines]))
     # part2([Instruction.parse2(line) for line in lines])
 
 
