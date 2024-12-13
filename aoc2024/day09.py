@@ -84,5 +84,5 @@ def part2(disk_map: list[int]):
     print(checksum)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

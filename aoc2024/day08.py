@@ -47,7 +47,7 @@ def main():
 
     for y in range(h):
         for x in range(w):
-            if (c := grid[y][x]) != '.':
+            if (c := grid[y][x]) != ".":
                 nodes[c].append(Point(x, y))
 
     for c, node_points in nodes.items():
@@ -67,5 +67,5 @@ def main():
     print(len(antinodes2))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

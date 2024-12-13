@@ -27,5 +27,5 @@ def main():
     print(similarity_score)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

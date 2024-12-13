@@ -19,7 +19,7 @@ def main():
             dampened_safe_count += 1
         else:
             for i in range(len(report)):
-                if is_safe(report[:i] + report[i + 1:]):
+                if is_safe(report[:i] + report[i + 1 :]):
                     dampened_safe_count += 1
                     break
 
@@ -41,5 +41,5 @@ def is_safe(report: list[int]):
     return False
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -50,5 +50,5 @@ def update_stone_counter(stone_counter: Counter[int]):
     return new_stones
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

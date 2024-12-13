@@ -6,7 +6,7 @@ from typing import NamedTuple
 
 def concatenate_ints(n1: int, n2: int) -> int:
     digit_count = int(math.log10(n2)) + 1
-    return n1 * (10 ** digit_count) + n2
+    return n1 * (10**digit_count) + n2
 
 
 class Equation(NamedTuple):
@@ -15,7 +15,7 @@ class Equation(NamedTuple):
 
     @staticmethod
     def parse(line: str):
-        target, rest = line.split(': ')
+        target, rest = line.split(": ")
         return Equation(int(target), [int(s) for s in rest.split()])
 
     def is_possibly_true(self, ops) -> bool:
@@ -49,5 +49,5 @@ def main():
     print(part1_sum + part2_sum)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

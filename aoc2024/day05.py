@@ -5,16 +5,16 @@ from collections import defaultdict, deque
 
 def main():
     with open(sys.argv[1]) as f:
-        rules_str, updates_str = f.read().split('\n\n')
+        rules_str, updates_str = f.read().split("\n\n")
 
     ordering_rules: dict[int, set[int]] = defaultdict(set)
-    for line in rules_str.strip().split('\n'):
-        s1, s2 = line.split('|')
+    for line in rules_str.strip().split("\n"):
+        s1, s2 = line.split("|")
         ordering_rules[int(s1)].add(int(s2))
 
     updates: list[list[int]] = []
-    for line in updates_str.strip().split('\n'):
-        words = line.split(',')
+    for line in updates_str.strip().split("\n"):
+        words = line.split(",")
         updates.append([int(w) for w in words])
 
     result1 = 0
@@ -29,7 +29,9 @@ def main():
     print(result2)
 
 
-def is_correctly_ordered(update: list[int], ordering_rules: dict[int, set[int]]) -> bool:
+def is_correctly_ordered(
+    update: list[int], ordering_rules: dict[int, set[int]]
+) -> bool:
     indexed = {n: i for i, n in enumerate(update)}
     for n, n_i in indexed.items():
         for m in ordering_rules[n]:
@@ -39,7 +41,9 @@ def is_correctly_ordered(update: list[int], ordering_rules: dict[int, set[int]])
     return True
 
 
-def topological_sort(update: list[int], ordering_rules: dict[int, set[int]]) -> list[int]:
+def topological_sort(
+    update: list[int], ordering_rules: dict[int, set[int]]
+) -> list[int]:
     members = set(update)
     filtered_rules = {
         n: dependents & members
@@ -65,5 +69,5 @@ def topological_sort(update: list[int], ordering_rules: dict[int, set[int]]) -> 
     return list(result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

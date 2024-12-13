@@ -16,7 +16,7 @@ def main():
 
     start: Point | None = None
     for y, line in enumerate(lines):
-        x = line.find('^')
+        x = line.find("^")
         if x >= 0:
             start = x + y * 1j
             break
@@ -34,7 +34,7 @@ def main():
         alternate_grid = [
             grid[yy]
             if yy != y
-            else [c if xx != x else '#' for xx, c in enumerate(grid[y])]
+            else [c if xx != x else "#" for xx, c in enumerate(grid[y])]
             for yy in range(len(grid))
         ]
         try:
@@ -65,7 +65,7 @@ def walk_grid(grid: list[list[str]], start: Point) -> set[Point]:
         x, y = int(next_p.real), int(next_p.imag)
         if not ((0 <= x < w) and (0 <= y < h)):
             break
-        if grid[y][x] == '#':
+        if grid[y][x] == "#":
             vector *= ROTATE_RIGHT
         else:
             curr_p = next_p
@@ -73,5 +73,5 @@ def walk_grid(grid: list[list[str]], start: Point) -> set[Point]:
     return set(visited_positions.keys())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

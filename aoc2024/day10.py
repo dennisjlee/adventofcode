@@ -68,5 +68,5 @@ def trailhead_rating(grid: list[list[int]], w: int, h: int, t: Point) -> int:
     return rating
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

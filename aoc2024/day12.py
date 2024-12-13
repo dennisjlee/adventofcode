@@ -62,5 +62,5 @@ def bfs(grid: list[list[str]], w: int, h: int, visited: set[Point], p: Point) ->
     return plot
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

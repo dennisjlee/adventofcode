@@ -4,7 +4,7 @@ import sys
 import re
 
 
-MULTIPLY_REGEX = re.compile(r'mul\((\d+),(\d+)\)')
+MULTIPLY_REGEX = re.compile(r"mul\((\d+),(\d+)\)")
 MULTIPLY_CONDITIONAL_REGEX = re.compile(r"(do(?:n't)?)\(\)|mul\((\d+),(\d+)\)")
 
 
@@ -23,7 +23,7 @@ def main():
     enabled_sum_product = 0
     for m in MULTIPLY_CONDITIONAL_REGEX.finditer(content):
         op = m.group(1)
-        if op == 'do':
+        if op == "do":
             enabled = True
         elif op == "don't":
             enabled = False
@@ -34,5 +34,5 @@ def main():
     print(enabled_sum_product)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
