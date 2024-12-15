@@ -1,11 +1,15 @@
+import copy
 import re
+import time
 from collections import Counter
 from dataclasses import dataclass
 
 import sys
 from functools import reduce
 from operator import mul
-from typing import NamedTuple
+from typing import NamedTuple, Iterable
+
+from blessed import Terminal
 
 
 class Point(NamedTuple):
@@ -60,9 +64,16 @@ class Robot:
         return None
 
 
+def print_grid(robots: Iterable[Robot], row_limit: int):
+    points = {r.point for r in robots}
+    for y in range(min(HEIGHT, row_limit)):
+        print(''.join('#' if Point(x, y) in points else ' ' for x in range(WIDTH)))
+
+
 def main():
     with open(sys.argv[1]) as f:
         robots = [Robot.parse(line) for line in f.readlines()]
+    robots_copy = copy.deepcopy(robots)
 
     for _ in range(100):
         for r in robots:
@@ -75,6 +86,16 @@ def main():
             quadrant_counter[r.quadrant()] += 1
 
     print(reduce(mul, quadrant_counter.values(), 1))
+
+    term = Terminal()
+    for i in range(10000):
+        for r in robots_copy:
+            r.move()
+        print(term.home + term.clear, end='')
+        print(term.bright_green(f'{i=}'))
+        print_grid(robots_copy, row_limit=term.height - 2)
+        time.sleep(1 / 60)
+
 
 
 if __name__ == "__main__":
