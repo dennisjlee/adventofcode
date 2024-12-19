@@ -1,8 +1,6 @@
-import copy
 import re
-import time
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import sys
 from functools import reduce
@@ -24,8 +22,8 @@ class Velocity(NamedTuple):
 
 WIDTH = 101
 HEIGHT = 103
-X_CUTOFF = 50
-Y_CUTOFF = 51
+X_CUTOFF = WIDTH // 2
+Y_CUTOFF = HEIGHT // 2
 
 
 ROBOT_REGEX = re.compile(r'p=(\d+),(\d+) v=(-?\d+),(-?\d+)')
@@ -35,6 +33,12 @@ ROBOT_REGEX = re.compile(r'p=(\d+),(\d+) v=(-?\d+),(-?\d+)')
 class Robot:
     point: Point
     velocity: Velocity
+
+    initial_point: Point = field(init=False)
+    period: int | None = field(init=False, default=None)
+
+    def __post_init__(self):
+        self.initial_point = self.point
 
     @staticmethod
     def parse(line: str) -> "Robot":
@@ -46,6 +50,16 @@ class Robot:
     def move(self):
         new_point = Point((self.point.x + self.velocity.dx) % WIDTH,
                           (self.point.y + self.velocity.dy) % HEIGHT)
+        self.point = new_point
+
+    def move_back(self):
+        new_point = Point((self.point.x - self.velocity.dx) % WIDTH,
+                          (self.point.y - self.velocity.dy) % HEIGHT)
+        self.point = new_point
+
+    def set_turn(self, turn: int):
+        new_point = Point((self.initial_point.x + turn * self.velocity.dx) % WIDTH,
+                          (self.initial_point.y + turn * self.velocity.dy) % HEIGHT)
         self.point = new_point
 
     def quadrant(self):
@@ -73,11 +87,9 @@ def print_grid(robots: Iterable[Robot], row_limit: int):
 def main():
     with open(sys.argv[1]) as f:
         robots = [Robot.parse(line) for line in f.readlines()]
-    robots_copy = copy.deepcopy(robots)
 
-    for _ in range(100):
-        for r in robots:
-            r.move()
+    for r in robots:
+        r.set_turn(100)
 
     quadrant_counter = Counter()
     for r in robots:
@@ -88,14 +100,46 @@ def main():
     print(reduce(mul, quadrant_counter.values(), 1))
 
     term = Terminal()
-    for i in range(10000):
-        for r in robots_copy:
-            r.move()
-        print(term.home + term.clear, end='')
-        print(term.bright_green(f'{i=}'))
-        print_grid(robots_copy, row_limit=term.height - 2)
-        time.sleep(1 / 60)
+    default_timeout = 1/60
+    timeout = default_timeout
+    for r in robots:
+        r.set_turn(0)
+    with (term.cbreak()):
+        i = 0
+        while i < WIDTH * HEIGHT:
+            keystroke = term.inkey(timeout=timeout)
+            if keystroke:
+                if keystroke == ' ':
+                    timeout = default_timeout if timeout is None else None
+                    continue
+                elif keystroke.name == "KEY_LEFT":
+                    i -= 1
+                    for r in robots:
+                        r.move_back()
+                elif keystroke.name == "KEY_RIGHT":
+                    i += 1
+                    for r in robots:
+                        r.move()
+                elif keystroke.name == "KEY_UP":
+                    i -= WIDTH
+                    for r in robots:
+                        r.set_turn(i)
+                elif keystroke.name == "KEY_DOWN":
+                    i += WIDTH
+                    for r in robots:
+                        r.set_turn(i)
+                print(term.home + term.clear, end='')
+                print(term.bright_green(f'{i=}'))
+                print_grid(robots, row_limit=HEIGHT)
+            else:
+                for r in robots:
+                    r.move()
+                print(term.home + term.clear, end='')
+                print(term.bright_green(f'{i=}'))
+                print_grid(robots, row_limit=HEIGHT)
+                i += 1
 
+    # the answer is 6532!
 
 
 if __name__ == "__main__":
