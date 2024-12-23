@@ -30,6 +30,7 @@ class Node:
                         neighbor.has_edge(clique_id) for clique_id in smaller_clique_ids
                     ):
                         next_cliques.append(smaller_clique_ids | {neighbor_id})
+            prev_cliques = next_cliques
         return [clique | {self.id} for clique in next_cliques]
 
 
@@ -41,6 +42,35 @@ class Graph:
         if id not in self.nodes:
             self.nodes[id] = Node(id)
         return self.nodes[id]
+
+    def get_maximum_clique(self):
+        node_ids = sorted(self.nodes.keys())
+        curr_cliques = {
+            (node_id, edge_id)
+            for node_id in node_ids
+            for edge_id in self.nodes[node_id].edges
+            if node_id < edge_id
+        }
+        size = 2
+        while True:
+            next_cliques = set()
+            for first_node_id, *other_node_ids in curr_cliques:
+                first_node = self.nodes[first_node_id]
+                for neighbor_id in first_node.edges - set(other_node_ids):
+                    neighbor = self.nodes[neighbor_id]
+                    if all(
+                        neighbor.has_edge(clique_id) for clique_id in other_node_ids
+                    ):
+                        next_cliques.add(
+                            tuple(sorted([first_node_id, neighbor_id, *other_node_ids]))
+                        )
+
+            if next_cliques:
+                size += 1
+                curr_cliques = next_cliques
+                print(f"Found {len(next_cliques)} cliques of {size=}")
+            else:
+                return curr_cliques.pop()
 
 
 def main():
@@ -59,8 +89,8 @@ def main():
             relevant_cliques |= set(node.get_cliques(graph.nodes, size=3))
 
     print(len(relevant_cliques))
-
-    
+    max_clique = graph.get_maximum_clique()
+    print(",".join(max_clique))
 
 
 if __name__ == "__main__":
