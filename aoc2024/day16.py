@@ -32,10 +32,6 @@ Grid = list[list[str]]
 Direction = Literal["H", "V"]
 
 
-def rotated(direction: Direction) -> Direction:
-    return "V" if direction == "H" else "H"
-
-
 class Node:
     point: Point
     direction: Direction
@@ -49,10 +45,6 @@ class Node:
     @property
     def key(self):
         return self.point, self.direction
-
-    @property
-    def rotated_key(self):
-        return self.point, rotated(self.direction)
 
     def add_edge(self, dest: Node, weight: int):
         self.edges_out.append((dest, weight))
@@ -154,9 +146,11 @@ def dijkstra_graph(graph: Graph):
     tentative_distance: dict[Node, int] = defaultdict(lambda: sys.maxsize)
     tentative_distance[start_node] = 0
 
+    predecessors: dict[Node, set[Node]] = defaultdict(set)
+    predecessors[start_node] = set()
+
     step = 0
     best_cost = sys.maxsize
-    best_paths: list[list[Node]] = []
     while heap:
         item: tuple[int, list[Node]] = heappop(heap)
         cost, path = item
@@ -169,36 +163,27 @@ def dijkstra_graph(graph: Graph):
             else:
                 print(f"Solved! step: {step}, heap size {len(heap)}")
                 best_cost = cost
-                best_paths.append(path)
 
         for neighbor, incremental_cost in curr.edges_out:
             new_cost = cost + incremental_cost
-            if new_cost < tentative_distance[neighbor]:
+            dist = tentative_distance[neighbor]
+            if new_cost < dist:
                 tentative_distance[neighbor] = new_cost
+                predecessors[neighbor] = {curr}
                 heappush(heap, (new_cost, path + [neighbor]))
-    return best_cost, best_paths
+            elif new_cost == dist:
+                predecessors[neighbor].add(curr)
 
-
-# def find_best_path_nodes(graph: Graph, optimal_distances: dict[Node, int]) -> set[Node]:
-#     start_node = graph.nodes[(graph.start_point, "H")]
-#     q: deque[tuple[int, Node, set[Node]]] = deque([(0, start_node, {start_node})])
-#     best_path_nodes = set()
-#     step = 0
-#     while q:
-#         step += 1
-#         cost, curr, visited = q.popleft()
-#         if curr.point == graph.end_point:
-#             best_path_nodes |= visited
-#             print(f"Found a path! {best_path_nodes=}, {step=}")
-#             continue
-#         if step % 10_000 == 0:
-#             print(f"Step {step}, queue length {len(q)}")
-#         for neighbor, incremental_cost in curr.edges_out:
-#             if neighbor not in visited:
-#                 new_cost = cost + incremental_cost
-#                 if new_cost == optimal_distances[neighbor]:
-#                     q.append((new_cost, neighbor, visited | {neighbor}))
-#     return best_path_nodes
+    best_path_nodes = set()
+    q: deque[Node] = deque(
+        [graph.nodes[(graph.end_point, "H")], graph.nodes[(graph.end_point, "V")]]
+    )
+    while q:
+        n = q.popleft()
+        best_path_nodes.add(n)
+        prev = predecessors[n]
+        q.extend(prev)
+    return best_cost, best_path_nodes
 
 
 def main():
@@ -208,11 +193,10 @@ def main():
     # part 1
     graph = construct_graph(grid)
 
-    cost, best_paths = dijkstra_graph(graph)
+    cost, best_path_nodes = dijkstra_graph(graph)
     print(cost)
 
-    # Wrong, too low
-    print(len({n.point for path in best_paths for n in path}))
+    print(len({n.point for n in best_path_nodes}))
 
 
 if __name__ == "__main__":
