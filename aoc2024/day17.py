@@ -100,24 +100,69 @@ def main():
     with open(sys.argv[1]) as f:
         registers_str, program_str = f.read().split("\n\n")
 
-    registers = [
+    original_registers = [
         int(register_line.split()[-1])
         for register_line in registers_str.strip().split("\n")
     ]
 
     program = [int(s) for s in program_str.split()[-1].split(",")]
 
-    state = ProgramState(registers)
     instructions = [
         Instruction.parse(program[i], program[i + 1]) for i in range(0, len(program), 2)
     ]
-    while 0 <= state.instr < len(program):
+    output = execute_program(original_registers, instructions)
+    print(",".join(str(o) for o in output))
+
+    part2(program)
+
+
+def execute_program(registers: list[int], instructions: list[Instruction]):
+    state = ProgramState(registers)
+    while 0 <= state.instr < 2 * len(instructions):
         if state.instr % 2 == 1:
             raise ValueError(f"Unexpected odd value of instr pointer: {state.instr}")
         instruction = instructions[state.instr // 2]
         instruction.execute(state)
+    return state.output
 
-    print(",".join(str(o) for o in state.output))
+
+# see day17_annotated.txt
+# to get 16 output digits, we need 8**15 <= a < 8**16
+def compute(a: int):
+    output: list[int] = []
+    while a:
+        b = (a % 8) ^ 1
+        c = a // (2**b)
+        a //= 8
+        b = b ^ 4 ^ c
+        output.append(b % 8)
+    return output
+
+
+def part2(program: list[int]):
+    # Treat the input `a` as a 16-digit number in octal.
+    # The most significant input digit will affect the last digit of program output, and
+    # the next most significant input digit will affect the second last digit of output,
+    # etc.
+    a = 0
+    for place in range(15, -1, -1):
+        for digit in range(8):
+            test_a = a | (digit << (place * 3))
+            output = compute(test_a)
+            if output[place:] == program[place:]:
+                a = test_a
+                break
+        else:
+            # In some situations, the contents of one digit are not enough to get the
+            # output digit we want, and we have to start manipulating the previous digit
+            # too
+            for digits in range(9, 63):
+                test_a = a | (digits << (place * 3))
+                output = compute(test_a)
+                if output[place:] == program[place:]:
+                    a = test_a
+                    break
+    print(a)
 
 
 if __name__ == "__main__":

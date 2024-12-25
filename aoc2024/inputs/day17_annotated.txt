@@ -1,0 +1,17 @@
+00: bst 4   # b = a % 8
+02: bxl 1   # b = b ^ 1
+04: cdv 5   # c = a // (2 ** b)
+06: adv 3   # a = a // (2 ** 3)
+08: bxl 4   # b = b ^ 4
+10: bxc 5   # b = b ^ c
+12: out 5   # output.append(b % 8)
+14: jnz 0   # if a: goto 0
+
+
+def compute(a: int, output: list[int]):
+    while a:
+        b = (a % 8) ^ 1
+        c = a // (2 ** b)
+        a /= 8
+        b = b ^ 4 ^ c
+        output.append(b % 8)
