@@ -1,0 +1,11 @@
+# optimal solution
+<v<A >>^A vA ^A___<vA <A A >>^A A vA <^A >A A vA ^A___<vA >^A A <A >A <v<A >A >^A A A vA <^A >A, len=64
+<A >A             v   <  < A    A >  ^   A  A >  A    vAA^A<vAAA>^A, len=28
+^  A              <             < ^         ^ A       >>AvvvA, len=14
+379A
+
+# my solution
+v<<A >>^A vA ^A___v<<A >>^A A v<A <A >>^A A vA A <^A >A___v<A >^A A <A >A v<A <A >>^A A A vA <^A >A, len=68
+<A >A             <    A    A v   <  A    A >  > ^   A    vAA^Av<AAA>^A, len=28
+^  A              ^         ^ <           < A             >>AvvvA, len=14
+379A
