@@ -3,7 +3,8 @@ from __future__ import annotations
 import functools
 import itertools
 import sys
-from typing import NamedTuple, Iterator, Sequence
+from collections import Counter
+from typing import NamedTuple
 
 
 class Point(NamedTuple):
@@ -68,37 +69,35 @@ class NumberPad:
 
     @staticmethod
     @functools.cache
-    def press_button_sequences(from_char: str, to_char: str) -> Sequence[str]:
-        """Return every possible optimal sequence of moves that would push the given
-        button"""
+    def press_button(from_char: str, to_char: str) -> str:
+        """Return optimal sequence of moves to push the given button"""
         curr = NumberPad.char_to_point(from_char)
         new_point = NumberPad.char_to_point(to_char)
 
         x_move = move_x(new_point, curr)
         y_move = move_y(new_point, curr)
         if new_point.y == curr.y:
-            return [x_move + "A"]
+            return x_move + "A"
         elif new_point.x == curr.x:
-            return [y_move + "A"]
+            return y_move + "A"
         elif curr.y == 3 and new_point.x == 0:
             # move up first to avoid moving left into the blank space
-            return [y_move + x_move + "A"]
+            return y_move + x_move + "A"
         elif new_point.y == 3 and curr.x == 0:
             # move right first to avoid moving down into the blank space
-            return [x_move + y_move + "A"]
+            return x_move + y_move + "A"
+        elif new_point.x < curr.x:
+            # move horizontally first
+            return x_move + y_move + "A"
         else:
-            # move either horizontally or vertically first (try both ways)
-            return [x_move + y_move + "A", y_move + x_move + "A"]
+            return y_move + x_move + "A"
 
     @staticmethod
-    def generate_all_sequences(buttons: str) -> Iterator[str]:
-        steps: list[Sequence[str]] = []
-        from_char = "A"
-        for to_char in buttons:
-            steps.append(NumberPad.press_button_sequences(from_char, to_char))
-            from_char = to_char
-        for product in itertools.product(*steps):
-            yield "".join(product)
+    def press_buttons(characters: str) -> str:
+        return "".join(
+            NumberPad.press_button(from_char, to_char)
+            for from_char, to_char in itertools.pairwise("A" + characters)
+        )
 
 
 class DirectionalPad:
@@ -126,37 +125,38 @@ class DirectionalPad:
 
     @staticmethod
     @functools.cache
-    def press_button_sequences(from_char: str, to_char: str) -> Sequence[str]:
-        """Return every possible optimal sequence of moves that would push the given
-        button"""
+    def press_button(from_char: str, to_char: str) -> str:
+        """Return optimal sequence of moves to push the given button"""
         curr = DirectionalPad.char_to_point(from_char)
         new_point = DirectionalPad.char_to_point(to_char)
 
         x_move = move_x(new_point, curr)
         y_move = move_y(new_point, curr)
         if new_point.y == curr.y:
-            return [x_move + "A"]
+            return x_move + "A"
         elif new_point.x == curr.x:
-            return [y_move + "A"]
+            return y_move + "A"
         elif curr.y == 0 and new_point.x == 0:
             # move down first to avoid moving left into the blank space
-            return [y_move + x_move + "A"]
+            return y_move + x_move + "A"
         elif new_point.y == 0 and curr.x == 0:
             # move right first to avoid moving up into the blank space
-            return [x_move + y_move + "A"]
+            return x_move + y_move + "A"
+        elif new_point.x < curr.x:
+            # move horizontally first - prefer `<` to `^` or `v` because it is farther
+            # from the `A`
+            return x_move + y_move + "A"
         else:
-            # move either horizontally or vertically first (try both ways)
-            return [x_move + y_move + "A", y_move + x_move + "A"]
+            # move vertically first - prefer `v` to `>` because it is farther from the
+            # `A`. If we're dealing with `^` and `>` then it's a wash.
+            return y_move + x_move + "A"
 
     @staticmethod
-    def generate_all_sequences(buttons: str) -> Iterator[str]:
-        steps: list[Sequence[str]] = []
-        from_char = "A"
-        for to_char in buttons:
-            steps.append(DirectionalPad.press_button_sequences(from_char, to_char))
-            from_char = to_char
-        for product in itertools.product(*steps):
-            yield "".join(product)
+    def press_buttons(characters: str) -> str:
+        return "".join(
+            DirectionalPad.press_button(from_char, to_char)
+            for from_char, to_char in itertools.pairwise("A" + characters)
+        )
 
 
 def main():
@@ -167,14 +167,10 @@ def main():
     for code in codes:
         numeric_code = int(code[:-1])
 
-        moves = min(
-            len(sequence2)
-            for sequence0 in NumberPad.generate_all_sequences(code)
-            for sequence1 in DirectionalPad.generate_all_sequences(sequence0)
-            for sequence2 in DirectionalPad.generate_all_sequences(sequence1)
-        )
-
-        result1 += moves * numeric_code
+        next_code = NumberPad.press_buttons(code)
+        for _ in range(2):
+            next_code = DirectionalPad.press_buttons(next_code)
+        result1 += len(next_code) * numeric_code
 
     print(result1)
 
@@ -182,29 +178,18 @@ def main():
     for code in codes:
         numeric_code = int(code[:-1])
 
-        sequences = NumberPad.generate_all_sequences(code)
+        next_code = NumberPad.press_buttons(code)
+        move_counter: Counter[tuple[str, str]] = Counter(
+            itertools.pairwise("A" + next_code)
+        )
         for i in range(25):
-            all_next_sequences: set[str] = set(
-                itertools.chain.from_iterable(
-                    [
-                        DirectionalPad.generate_all_sequences(sequence)
-                        for sequence in sequences
-                    ]
-                )
-            )
-            min_length = min(len(next_seq) for next_seq in all_next_sequences)
-            sequences = {
-                next_seq
-                for next_seq in all_next_sequences
-                if len(next_seq) == min_length
-            }
-            print(
-                f"At step {i}, {len(all_next_sequences)} next sequences, {len(sequences)} sequences"
-            )
-            print("\n".join(list(sequences)[:10]))
-        moves = len(sequences.pop())
-
-        result2 += moves * numeric_code
+            next_counter: Counter[tuple[str, str]] = Counter()
+            for (from_char, to_char), count in move_counter.items():
+                moves = DirectionalPad.press_button(from_char, to_char)
+                for from2, to2 in itertools.pairwise("A" + moves):
+                    next_counter[(from2, to2)] += count
+            move_counter = next_counter
+        result2 += move_counter.total() * numeric_code
 
     print(result2)
 
