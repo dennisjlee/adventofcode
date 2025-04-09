@@ -220,20 +220,25 @@ def part2(instructions: list[Instruction], verbose=False):
     print(area)
 
     if verbose:
-        dug_points: set[Point] = set()
-        n = len(corners)
-        for i in range(n):
-            corner0 = corners[i]
-            corner1 = corners[(i + 1) % n]
-            vec = Vector(dx=corner1.x - corner0.x, dy=corner1.y - corner0.y)
-            unit_vec = vec.unit_vector()
-            dug_points.add(corner0)
-            next_point = corner0
-            for j in range(1, int(vec.magnitude)):
-                next_point = next_point.translate_by(unit_vec)
-                dug_points.add(next_point)
+        print_corners(corners)
 
-        print_dug_points(dug_points)
+
+def print_corners(corners: list[Point]):
+    dug_points: set[Point] = set()
+    n = len(corners)
+    for i in range(n):
+        corner0 = corners[i]
+        corner1 = corners[(i + 1) % n]
+        vec = Vector(dx=corner1.x - corner0.x, dy=corner1.y - corner0.y)
+        unit_vec = vec.unit_vector()
+        dug_points.add(corner0)
+        next_point = corner0
+        for j in range(1, int(vec.magnitude)):
+            next_point = next_point.translate_by(unit_vec)
+            dug_points.add(next_point)
+
+    print_dug_points(dug_points)
+    print(corners)
 
 
 def main():
