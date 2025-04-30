@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import math
-from math import sqrt
 import re
 import sys
 from collections import Counter
+from dataclasses import dataclass
+from math import sqrt
 from typing import NamedTuple, Literal
-
 
 Rotation = Literal['L', 'R', None]
 
@@ -51,6 +50,21 @@ class Point(NamedTuple):
         if isinstance(other, Vector):
             return Point(self.x - other.dx, self.y - other.dy)
         raise NotImplementedError
+
+
+@dataclass
+class Rectangle:
+    corner1: Point
+    corner2: Point
+
+    def __post_init__(self):
+        self.start_x = min(self.corner1.x, self.corner2.x)
+        self.end_x = max(self.corner1.x, self.corner2.x)
+        self.start_y = min(self.corner1.y, self.corner2.y)
+        self.end_y = max(self.corner1.y, self.corner2.y)
+
+    def contains(self, p: Point) -> bool:
+        return self.start_x <= p.x <= self.end_x and self.start_y <= p.y <= self.end_y
 
 
 LINE_REGEX = re.compile(r'([A-Z]) (\d+) \(#([0-9a-f]+)\)')
@@ -170,13 +184,14 @@ def part2(instructions: list[Instruction], verbose=False):
     removed_space = 0
     while len(corners) > 4:
         # Walk the edge of the shape clockwise, looking for two right turns in a row. Each time we find that, it's a
-        # bump sticking out of the shape. Remove the smallest bump and then keep iterating, keeping track of how much
-        # space we removed. Eventually we'll be left with a simple rectangle, and we'll be able to just multiply to get
-        # the total area, then add back the space we removed along the way!
+        # bump sticking out of the shape. Remove the first bump we find (as long as it doesn't contain another corner!)
+        # and then keep iterating, keeping track of how much space we removed. Eventually we'll be left with a simple
+        # rectangle, and we'll be able to just multiply to get the total area, then add back the space we removed along
+        # the way!
         n = len(corners)
 
-        smallest_removal = math.inf
-        new_corners: list[Point] = []
+        new_corners: list[Point] | None = None
+        removal_size = 0
 
         for i0 in range(n):
             i1 = (i0 + 1) % n
@@ -204,33 +219,36 @@ def part2(instructions: list[Instruction], verbose=False):
                     ....#.......#....#...
                     """
                     removal_size = int(min(vec1.magnitude, vec3.magnitude) * (vec2.magnitude + 1))
-                    if removal_size < smallest_removal:
-                        smallest_removal = removal_size
 
-                        delta = vec3.magnitude - vec1.magnitude
-                        if delta == 0:
-                            new_corners = [corners[j] for j in range(n) if j not in {i0, i1, i2, i3}]
+                    delta = vec3.magnitude - vec1.magnitude
+                    if delta == 0:
+                        removed_rectangle = Rectangle(corner0, corner2)
+                        new_corners = [corners[j] for j in range(n) if j not in {i0, i1, i2, i3}]
 
-                        elif delta < 0:
-                            new_corner = corner3 - vec2
-                            new_corners = [new_corner if j == i3 else corners[j]
-                                           for j in range(n) if j not in {i1, i2}]
-                        else:
-                            new_corner = corner0 + vec2
-                            new_corners = [new_corner if j == i0 else corners[j]
-                                           for j in range(n) if j not in {i1, i2}]
+                    elif delta < 0:
+                        new_corner = corner3 - vec2
+                        removed_rectangle = Rectangle(new_corner, corner2)
+                        new_corners = [new_corner if j == i3 else corners[j]
+                                       for j in range(n) if j not in {i1, i2}]
+                    else:
+                        new_corner = corner0 + vec2
+                        removed_rectangle = Rectangle(corner0, corner2)
+                        new_corners = [new_corner if j == i0 else corners[j]
+                                       for j in range(n) if j not in {i1, i2}]
 
-        if smallest_removal == math.inf:
+                    # Don't remove this rectangle if it overlaps with any of the other corners - look for another
+                    # candidate instead
+                    if any(removed_rectangle.contains(corner) for corner in
+                           (set(corners) - {corner0, corner1, corner2, corner3})):
+                        new_corners = None
+
+            if new_corners is not None:
+                corners = new_corners
+                removed_space += removal_size
+                break
+        else:
             # We didn't find two right turns in a row, so flip around and try again
             corners = list(reversed(corners))
-        else:
-            corners = new_corners
-            removed_space += smallest_removal
-
-            if verbose:
-                print()
-                print_corners(corners)
-                print(f"{removed_space=}")
 
     [corner0, corner1, corner2] = corners[:3]
     vec1 = Vector(dx=corner1.x - corner0.x, dy=corner1.y - corner0.y)
@@ -268,10 +286,10 @@ def main():
         lines = f.readlines()
 
     instructions1 = [Instruction.parse1(line) for line in lines]
-    part1(instructions1, True)
-    part2(instructions1, True)
-    # print('\n'.join([repr(Instruction.parse2(line)) for line in lines]))
-    # part2([Instruction.parse2(line) for line in lines])
+    part1(instructions1, False)
+    part2(instructions1, False)
+    print('\n'.join([repr(Instruction.parse2(line)) for line in lines]))
+    part2([Instruction.parse2(line) for line in lines], False)
 
 
 if __name__ == '__main__':
