@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from math import sqrt
 import re
 import sys
@@ -166,13 +167,17 @@ def part2(instructions: list[Instruction], verbose=False):
 
     last_corner = corners.pop()  # remove the last corner which is a duplicate
     assert last_corner == corners[0]
-    negative_space = 0
+    removed_space = 0
     while len(corners) > 4:
-        # Walk the edge of the shape clockwise, looking for left turns. When we find one, cut out
-        # that corner and keep track of how much space we added. Eventually we'll be left with a
-        # simple rectangle, and we'll be able to just multiply to get the total area, then subtract
-        # the space we added along the way!
+        # Walk the edge of the shape clockwise, looking for two right turns in a row. Each time we find that, it's a
+        # bump sticking out of the shape. Remove the smallest bump and then keep iterating, keeping track of how much
+        # space we removed. Eventually we'll be left with a simple rectangle, and we'll be able to just multiply to get
+        # the total area, then add back the space we removed along the way!
         n = len(corners)
+
+        smallest_removal = math.inf
+        new_corners: list[Point] = []
+
         for i0 in range(n):
             i1 = (i0 + 1) % n
             i2 = (i0 + 2) % n
@@ -186,64 +191,51 @@ def part2(instructions: list[Instruction], verbose=False):
             vec3 = Vector(dx=corner3.x - corner2.x, dy=corner3.y - corner2.y)
             rotation1 = vec2.rotation_from(vec1)
             rotation2 = vec3.rotation_from(vec2)
-            if rotation1 == 'L':
-                if rotation2 == 'L':
-                    # this looks like a pocket taken out of the shape. Note that vec1 can have equal, less or greater
+            if rotation1 == 'R':
+                if rotation2 == 'R':
+                    # This looks like a bump sticking out of the shape. Note that vec1 can have equal, greater, or lower
                     # magnitude than vec3 (the two horizontal vectors in the three examples below, travelling from top
                     # to bottom).
                     """
-                    ....#.....#.......#.
-                    ..1#0...1#0....1##0.
-                    ..#.....#......#....
-                    ..2#3...2##3...2#3..
-                    ....#......#.....#..
+                    ....#.....#........#.
+                    ..2#3...2#3....2###3.
+                    ..#.....#......#.....
+                    ..1#0...1###0..1#0...
+                    ....#.......#....#...
                     """
-                    negative_space += int(min(vec1.magnitude, vec3.magnitude) * (vec2.magnitude - 1))
+                    removal_size = int(min(vec1.magnitude, vec3.magnitude) * (vec2.magnitude + 1))
+                    if removal_size < smallest_removal:
+                        smallest_removal = removal_size
 
-                    match vec3.magnitude - vec1.magnitude:
-                        case 0:
+                        delta = vec3.magnitude - vec1.magnitude
+                        if delta == 0:
                             new_corners = [corners[j] for j in range(n) if j not in {i0, i1, i2, i3}]
 
-                        case delta if delta > 0:
+                        elif delta < 0:
+                            new_corner = corner3 - vec2
+                            new_corners = [new_corner if j == i3 else corners[j]
+                                           for j in range(n) if j not in {i1, i2}]
+                        else:
                             new_corner = corner0 + vec2
                             new_corners = [new_corner if j == i0 else corners[j]
                                            for j in range(n) if j not in {i1, i2}]
 
-                        case _:
-                            new_corner = corner3 - vec2
-                            new_corners = [new_corner if j == i3 else corners[j]
-                                           for j in range(n) if j not in {i1, i2}]
-                else:
-                    # this looks like a corner taken out of the shape
-                    """
-                    .#....#.
-                    .#..1#0.
-                    .#..#...
-                    .3##2...
-                    .......
-                    """
-                    negative_space += int(vec1.magnitude * vec2.magnitude)
-                    new_corner = corner0 + vec2
-                    new_corners = [new_corner if j == i0 else corners[j]
-                                   for j in range(n) if j not in {i1, i2}]
-
-                corners = new_corners
-
-                # if verbose:
-                #     print()
-                #     print_corners(corners)
-                #     print(f"{negative_space=}")
-                break
+        if smallest_removal == math.inf:
+            # We didn't find two right turns in a row, so flip around and try again
+            corners = list(reversed(corners))
         else:
-            print("No left rotations found!", corners)
-            break
+            corners = new_corners
+            removed_space += smallest_removal
 
-    corner0 = corners[0]
-    corner1 = corners[1]
-    corner2 = corners[2]
+            if verbose:
+                print()
+                print_corners(corners)
+                print(f"{removed_space=}")
+
+    [corner0, corner1, corner2] = corners[:3]
     vec1 = Vector(dx=corner1.x - corner0.x, dy=corner1.y - corner0.y)
     vec2 = Vector(dx=corner2.x - corner1.x, dy=corner2.y - corner1.y)
-    area = int((vec1.magnitude + 1) * (vec2.magnitude + 1)) - negative_space
+    area = int((vec1.magnitude + 1) * (vec2.magnitude + 1)) + removed_space
     print(area)
 
     if verbose:
