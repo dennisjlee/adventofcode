@@ -41,8 +41,15 @@ class Point(NamedTuple):
     x: int
     y: int
 
-    def translate_by(self, vector: Vector) -> Point:
-        return Point(self.x + vector.dx, self.y + vector.dy)
+    def __add__(self, other) -> Point:
+        if isinstance(other, Vector):
+            return Point(self.x + other.dx, self.y + other.dy)
+        raise NotImplementedError
+
+    def __sub__(self, other) -> Point:
+        if isinstance(other, Vector):
+            return Point(self.x - other.dx, self.y - other.dy)
+        raise NotImplementedError
 
 
 LINE_REGEX = re.compile(r'([A-Z]) (\d+) \(#([0-9a-f]+)\)')
@@ -154,22 +161,23 @@ def part2(instructions: list[Instruction], verbose=False):
         prev_vec = vec
     assert None not in rotation_counter
     if rotation_counter['R'] < rotation_counter['L']:
-        # we're going counter-clockwise, reverse things so we go clockwise
+        # we're going counter-clockwise, reverse things so that we go clockwise
         corners = list(reversed(corners))
 
-    corners.pop()  # remove the last corner which is a duplicate
+    last_corner = corners.pop()  # remove the last corner which is a duplicate
+    assert last_corner == corners[0]
     negative_space = 0
     while len(corners) > 4:
         # Walk the edge of the shape clockwise, looking for left turns. When we find one, cut out
         # that corner and keep track of how much space we added. Eventually we'll be left with a
-        # simple rectangle and we'll be able to just multiply to get the total area, and subtract
+        # simple rectangle, and we'll be able to just multiply to get the total area, then subtract
         # the space we added along the way!
         n = len(corners)
-        for i in range(n):
-            i1 = (i + 1) % n
-            i2 = (i + 2) % n
-            i3 = (i + 3) % n
-            corner0 = corners[i]
+        for i0 in range(n):
+            i1 = (i0 + 1) % n
+            i2 = (i0 + 2) % n
+            i3 = (i0 + 3) % n
+            corner0 = corners[i0]
             corner1 = corners[i1]
             corner2 = corners[i2]
             corner3 = corners[i3]
@@ -180,32 +188,51 @@ def part2(instructions: list[Instruction], verbose=False):
             rotation2 = vec3.rotation_from(vec2)
             if rotation1 == 'L':
                 if rotation2 == 'L':
-                    # this looks like a pocket taken out of the shape
+                    # this looks like a pocket taken out of the shape. Note that vec1 can have equal, less or greater
+                    # magnitude than vec3 (the two horizontal vectors in the three examples below, travelling from top
+                    # to bottom).
                     """
-                    ....#.
-                    ..###.
-                    ..#...
-                    ..###.
-                    ....#.
+                    ....#.....#.......#.
+                    ..1#0...1#0....1##0.
+                    ..#.....#......#....
+                    ..2#3...2##3...2#3..
+                    ....#......#.....#..
                     """
-                    negative_space += int(vec1.magnitude * (vec2.magnitude - 1))
+                    negative_space += int(min(vec1.magnitude, vec3.magnitude) * (vec2.magnitude - 1))
+
+                    match vec3.magnitude - vec1.magnitude:
+                        case 0:
+                            new_corners = [corners[j] for j in range(n) if j not in {i0, i1, i2, i3}]
+
+                        case delta if delta > 0:
+                            new_corner = corner0 + vec2
+                            new_corners = [new_corner if j == i0 else corners[j]
+                                           for j in range(n) if j not in {i1, i2}]
+
+                        case _:
+                            new_corner = corner3 - vec2
+                            new_corners = [new_corner if j == i3 else corners[j]
+                                           for j in range(n) if j not in {i1, i2}]
                 else:
                     # this looks like a corner taken out of the shape
                     """
-                    ....#.
-                    ..###.
-                    ..#...
-                    ###...
+                    .#....#.
+                    .#..1#0.
+                    .#..#...
+                    .3##2...
+                    .......
                     """
                     negative_space += int(vec1.magnitude * vec2.magnitude)
+                    new_corner = corner0 + vec2
+                    new_corners = [new_corner if j == i0 else corners[j]
+                                   for j in range(n) if j not in {i1, i2}]
 
-                new_corner = corner0.translate_by(vec2)
-                if new_corner == corner3:
-                    corners = [corners[j] for j in range(n) if j not in {i, i1, i2, i3}]
-                else:
-                    corners = [new_corner if j == i else corners[j]
-                               for j in range(n) if j not in {i1, i2}]
+                corners = new_corners
 
+                # if verbose:
+                #     print()
+                #     print_corners(corners)
+                #     print(f"{negative_space=}")
                 break
         else:
             print("No left rotations found!", corners)
@@ -230,11 +257,14 @@ def print_corners(corners: list[Point]):
         corner0 = corners[i]
         corner1 = corners[(i + 1) % n]
         vec = Vector(dx=corner1.x - corner0.x, dy=corner1.y - corner0.y)
+        if vec.magnitude == 0:
+            print("Warning: duplicate corner", corner0)
+            continue
         unit_vec = vec.unit_vector()
         dug_points.add(corner0)
         next_point = corner0
         for j in range(1, int(vec.magnitude)):
-            next_point = next_point.translate_by(unit_vec)
+            next_point = next_point + unit_vec
             dug_points.add(next_point)
 
     print_dug_points(dug_points)
