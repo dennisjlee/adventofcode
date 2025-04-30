@@ -1,20 +1,70 @@
 from __future__ import annotations
 
-import sys
-from bisect import insort_left
-from collections import defaultdict
-from typing import NamedTuple
 import re
+import sys
+from collections import Counter
+from dataclasses import dataclass
+from math import sqrt
+from typing import NamedTuple, Literal
+
+Rotation = Literal['L', 'R', None]
 
 
 class Vector(NamedTuple):
     dx: int
     dy: int
 
+    @property
+    def magnitude(self) -> float:
+        return sqrt(self.dx ** 2 + self.dy ** 2)
+
+    def unit_vector(self) -> Vector:
+        mag = self.magnitude
+        return Vector(dx=int(self.dx / mag), dy=int(self.dy / mag))
+
+    def rotation_from(self, other: Vector) -> Rotation:
+        if self.dx == 0 and other.dx == 0:
+            return None
+        elif self.dy == 0 and other.dy == 0:
+            return None
+        elif other.dy < 0:  # other is UP
+            return 'R' if self.dx > 0 else 'L'
+        elif other.dy > 0:  # other is DOWN
+            return 'R' if self.dx < 0 else 'L'
+        elif other.dx > 0:  # other is RIGHT
+            return 'R' if self.dy > 0 else 'L'
+        elif other.dx < 0:  # other is LEFT
+            return 'R' if self.dy < 0 else 'L'
+
 
 class Point(NamedTuple):
     x: int
     y: int
+
+    def __add__(self, other) -> Point:
+        if isinstance(other, Vector):
+            return Point(self.x + other.dx, self.y + other.dy)
+        raise NotImplementedError
+
+    def __sub__(self, other) -> Point:
+        if isinstance(other, Vector):
+            return Point(self.x - other.dx, self.y - other.dy)
+        raise NotImplementedError
+
+
+@dataclass
+class Rectangle:
+    corner1: Point
+    corner2: Point
+
+    def __post_init__(self):
+        self.start_x = min(self.corner1.x, self.corner2.x)
+        self.end_x = max(self.corner1.x, self.corner2.x)
+        self.start_y = min(self.corner1.y, self.corner2.y)
+        self.end_y = max(self.corner1.y, self.corner2.y)
+
+    def contains(self, p: Point) -> bool:
+        return self.start_x <= p.x <= self.end_x and self.start_y <= p.y <= self.end_y
 
 
 LINE_REGEX = re.compile(r'([A-Z]) (\d+) \(#([0-9a-f]+)\)')
@@ -57,7 +107,25 @@ VECTOR_LOOKUP = {
 }
 
 
-def part1(instructions: list[Instruction]):
+def print_dug_points(dug_points: set[Point]):
+    min_x = min(p.x for p in dug_points) - 1
+    min_y = min(p.y for p in dug_points) - 1
+    max_x = max(p.x for p in dug_points) + 1
+    max_y = max(p.y for p in dug_points) + 1
+
+    def c(xx, yy):
+        if xx == 0 and yy == 0:
+            return "@"
+        elif Point(xx, yy) in dug_points:
+            return "#"
+        else:
+            return "."
+
+    for y in range(min_y, max_y + 1):
+        print("".join([c(x, y) for x in range(min_x, max_x + 1)]))
+
+
+def part1(instructions: list[Instruction], verbose=False):
     curr = Point(0, 0)
     dug_points: set[Point] = {curr}
     for instr in instructions:
@@ -88,26 +156,129 @@ def part1(instructions: list[Instruction]):
                         stack.append(Point(x, y))
 
     print(total_points - len(outside_points))
+    if verbose:
+        print_dug_points(dug_points)
 
 
-def part2(instructions: list[Instruction]):
+def part2(instructions: list[Instruction], verbose=False):
     curr = Point(0, 0)
-    corners: set[Point] = {curr}
+    corners: list[Point] = [curr]
+    rotation_counter: Counter[Rotation] = Counter()
+    prev_vec: Vector | None = None
     for instr in instructions:
         vec = instr.vector
+        if prev_vec:
+            rotation1 = vec.rotation_from(prev_vec)
+            rotation_counter[rotation1] += 1
         curr = Point(curr.x + instr.magnitude * vec.dx, curr.y + instr.magnitude * vec.dy)
-        corners.add(curr)
+        corners.append(curr)
 
-    corners_by_y: dict[int, list[Point]] = defaultdict(list)
-    corners_by_x: dict[int, list[Point]] = defaultdict(list)
-    for corner in corners:
-        insort_left(corners_by_x[corner.x], corner)
-        insort_left(corners_by_y[corner.y], corner)
+        prev_vec = vec
+    assert None not in rotation_counter
+    if rotation_counter['R'] < rotation_counter['L']:
+        # we're going counter-clockwise, reverse things so that we go clockwise
+        corners = list(reversed(corners))
 
-    print()
-    print('\n'.join(repr((x, corners)) for x, corners in sorted(corners_by_x.items())))
-    print()
-    print('\n'.join(repr((y, corners)) for y, corners in sorted(corners_by_y.items())))
+    last_corner = corners.pop()  # remove the last corner which is a duplicate
+    assert last_corner == corners[0]
+    removed_space = 0
+    while len(corners) > 4:
+        # Walk the edge of the shape clockwise, looking for two right turns in a row. Each time we find that, it's a
+        # bump sticking out of the shape. Remove the first bump we find (as long as it doesn't contain another corner!)
+        # and then keep iterating, keeping track of how much space we removed. Eventually we'll be left with a simple
+        # rectangle, and we'll be able to just multiply to get the total area, then add back the space we removed along
+        # the way!
+        n = len(corners)
+
+        new_corners: list[Point] | None = None
+        removal_size = 0
+
+        for i0 in range(n):
+            i1 = (i0 + 1) % n
+            i2 = (i0 + 2) % n
+            i3 = (i0 + 3) % n
+            corner0 = corners[i0]
+            corner1 = corners[i1]
+            corner2 = corners[i2]
+            corner3 = corners[i3]
+            vec1 = Vector(dx=corner1.x - corner0.x, dy=corner1.y - corner0.y)
+            vec2 = Vector(dx=corner2.x - corner1.x, dy=corner2.y - corner1.y)
+            vec3 = Vector(dx=corner3.x - corner2.x, dy=corner3.y - corner2.y)
+            rotation1 = vec2.rotation_from(vec1)
+            rotation2 = vec3.rotation_from(vec2)
+            if rotation1 == 'R':
+                if rotation2 == 'R':
+                    # This looks like a bump sticking out of the shape. Note that vec1 can have equal, greater, or lower
+                    # magnitude than vec3 (the two horizontal vectors in the three examples below, travelling from top
+                    # to bottom).
+                    """
+                    ....#.....#........#.
+                    ..2#3...2#3....2###3.
+                    ..#.....#......#.....
+                    ..1#0...1###0..1#0...
+                    ....#.......#....#...
+                    """
+                    removal_size = int(min(vec1.magnitude, vec3.magnitude) * (vec2.magnitude + 1))
+
+                    delta = vec3.magnitude - vec1.magnitude
+                    if delta == 0:
+                        removed_rectangle = Rectangle(corner0, corner2)
+                        new_corners = [corners[j] for j in range(n) if j not in {i0, i1, i2, i3}]
+
+                    elif delta < 0:
+                        new_corner = corner3 - vec2
+                        removed_rectangle = Rectangle(new_corner, corner2)
+                        new_corners = [new_corner if j == i3 else corners[j]
+                                       for j in range(n) if j not in {i1, i2}]
+                    else:
+                        new_corner = corner0 + vec2
+                        removed_rectangle = Rectangle(corner0, corner2)
+                        new_corners = [new_corner if j == i0 else corners[j]
+                                       for j in range(n) if j not in {i1, i2}]
+
+                    # Don't remove this rectangle if it overlaps with any of the other corners - look for another
+                    # candidate instead
+                    if any(removed_rectangle.contains(corner) for corner in
+                           (set(corners) - {corner0, corner1, corner2, corner3})):
+                        new_corners = None
+
+            if new_corners is not None:
+                corners = new_corners
+                removed_space += removal_size
+                break
+        else:
+            # We didn't find two right turns in a row, so flip around and try again
+            corners = list(reversed(corners))
+
+    [corner0, corner1, corner2] = corners[:3]
+    vec1 = Vector(dx=corner1.x - corner0.x, dy=corner1.y - corner0.y)
+    vec2 = Vector(dx=corner2.x - corner1.x, dy=corner2.y - corner1.y)
+    area = int((vec1.magnitude + 1) * (vec2.magnitude + 1)) + removed_space
+    print(area)
+
+    if verbose:
+        print_corners(corners)
+
+
+def print_corners(corners: list[Point]):
+    dug_points: set[Point] = set()
+    n = len(corners)
+    for i in range(n):
+        corner0 = corners[i]
+        corner1 = corners[(i + 1) % n]
+        vec = Vector(dx=corner1.x - corner0.x, dy=corner1.y - corner0.y)
+        if vec.magnitude == 0:
+            print("Warning: duplicate corner", corner0)
+            continue
+        unit_vec = vec.unit_vector()
+        dug_points.add(corner0)
+        next_point = corner0
+        for j in range(1, int(vec.magnitude)):
+            next_point = next_point + unit_vec
+            dug_points.add(next_point)
+
+    print_dug_points(dug_points)
+    print(corners)
 
 
 def main():
@@ -115,9 +286,10 @@ def main():
         lines = f.readlines()
 
     instructions1 = [Instruction.parse1(line) for line in lines]
-    part1(instructions1)
-    part2(instructions1)
-    # part2([Instruction.parse2(line) for line in lines])
+    part1(instructions1, False)
+    part2(instructions1, False)
+    print('\n'.join([repr(Instruction.parse2(line)) for line in lines]))
+    part2([Instruction.parse2(line) for line in lines], False)
 
 
 if __name__ == '__main__':
