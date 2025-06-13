@@ -27,6 +27,19 @@ class Sequence:
             return 0
         return self.numbers[0] - self.differences.extrapolate_prev()
 
+    def extrapolate_next_n(self, n: int):
+        assert n >= 1
+        if not self.differences:
+            return [0] * n
+        next_n_differences = self.differences.extrapolate_next_n(n)
+        result = []
+        for i in range(n - 1):
+            if i == 0:
+                result.append(self.numbers[-1] + next_n_differences[i])
+            else:
+                result.append(result[i - 1] + next_n_differences[i])
+        return result
+
 
 def main():
     with open(sys.argv[1]) as f:
