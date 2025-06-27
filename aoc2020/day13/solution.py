@@ -9,6 +9,7 @@ def main():
 
     part1(lines)
     part2(lines)
+    part2_simplified(lines)
 
 
 def part1(lines: List[str]):
@@ -103,6 +104,34 @@ def simplify_mod_product(base: int, factor: int, value: int) -> int:
     """
     return next(i for i in range(base) if factor * i % base == value)
 
+
+def part2_simplified(lines: List[str]):
+    bus_ids: deque[Tuple[int, int]] = deque()
+    for i, bus_id in enumerate(lines[1].split(',')):
+        if bus_id == 'x':
+            continue
+        bus_id = int(bus_id)
+        bus_ids.append((i, bus_id))
+
+    index, base = bus_ids.popleft()
+    current = 0
+    assert index == 0
+    # Search for the first number n that satisfies the condition of n % base_j = index_j for j up to i. Iteratively
+    # build up n after finding a number that satisfies the condition for the previous bases, by adding on multiples
+    # of the product of all bases used so far (because that won't change the result of the modulo operation against
+    # those bases).
+    while bus_ids:
+        next_index, next_base = bus_ids.popleft()
+        target_mod = (next_base - next_index) % next_base
+        for k in range(next_base):
+            if (current + base * k) % next_base == target_mod:
+                current += base * k
+                base *= next_base
+                break
+        else:
+            raise ValueError(f'Could not find a solution for {next_base} with target mod {target_mod} '
+                             f'and current {current} and base {base}')
+    print(current)
 
 if __name__ == '__main__':
     main()
