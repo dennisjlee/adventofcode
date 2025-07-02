@@ -3,6 +3,7 @@ mod day01;
 mod day02;
 mod intcode;
 mod day03;
+mod day04;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -28,6 +29,7 @@ fn main() {
         1 => day01::run(input_file).unwrap(),
         2 => day02::run(input_file).unwrap(),
         3 => day03::run(input_file).unwrap(),
+        4 => day04::run(input_file).unwrap(),
         // Add more days here as needed
         _ => eprintln!("Day {} is not implemented yet.", day_number),
     }
