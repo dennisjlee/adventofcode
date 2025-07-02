@@ -5,8 +5,8 @@ mod intcode;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
-        eprintln!("Usage: {} <day_number> <input_file>", args[0]);
+    if args.len() < 2 || args.len() > 3 {
+        eprintln!("Usage: {} <day_number> [<input_file>]", args[0]);
         return;
     }
 
@@ -17,7 +17,11 @@ fn main() {
             return;
         }
     };
-    let input_file = &args[2];
+    let input_file = if args.len() == 3 {
+        &args[2]
+    } else {
+        &format!("inputs/day{day_number:0>2}.txt")
+    };
 
     match day_number {
         1 => day01::run(input_file).unwrap(),

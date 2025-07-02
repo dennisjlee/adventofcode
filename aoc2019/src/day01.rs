@@ -9,17 +9,17 @@ pub fn run(input_filename: &str) -> std::io::Result<()> {
     file.read_to_string(&mut contents)?;
 
     let mut total_fuel = 0u64;
-    let mut total_fuel_recursive = 0u64;
+    let mut total_fuel_iterative = 0u64;
     for line in contents.lines() {
         if let Ok(mass) = line.parse::<u64>() {
             total_fuel += fuel_mass(mass);
-            total_fuel_recursive += fuel_mass_recursive(mass);
+            total_fuel_iterative += fuel_mass_iterative(mass);
         } else {
             eprintln!("Invalid mass value: {}", line);
         }
     }
     println!("{}", total_fuel);
-    println!("{}", total_fuel_recursive);
+    println!("{}", total_fuel_iterative);
     
     Ok(())
 }
@@ -33,11 +33,12 @@ fn fuel_mass(mass: u64) -> u64 {
     }
 }
 
-fn fuel_mass_recursive(mass: u64) -> u64 {
-    let fuel = fuel_mass(mass);
-    if fuel == 0 {
-        0
-    } else {
-        fuel + fuel_mass_recursive(fuel)
+fn fuel_mass_iterative(mass: u64) -> u64 {
+    let mut total_fuel = 0;
+    let mut current_mass = mass;
+    while current_mass > 0 {
+        current_mass = fuel_mass(current_mass);
+        total_fuel += current_mass;
     }
+    total_fuel
 }
