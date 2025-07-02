@@ -8,11 +8,7 @@ pub fn run(input_filename: &str) -> std::io::Result<()> {
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    let memory: Vec<i32> = contents
-        .trim()
-        .split(',')
-        .filter_map(|s| s.parse().ok())
-        .collect();
+    let memory = IntCode::parse_memory(&contents);
 
     // part 1
     println!("{}", execute_program(&memory, 12, 2, false));
@@ -36,6 +32,6 @@ fn execute_program(memory: &Vec<i32>, noun: i32, verb: i32, verbose: bool) -> i3
     program[2] = verb;
 
     let mut intcode = IntCode::new(program, verbose);
-    intcode.run();
+    intcode.run(None);
     intcode.memory()[0]
 }
