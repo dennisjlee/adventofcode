@@ -1,5 +1,7 @@
 use std::env;
 mod day01;
+mod day02;
+mod intcode;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -18,7 +20,8 @@ fn main() {
     let input_file = &args[2];
 
     match day_number {
-        1 => day01::run(input_file),
+        1 => day01::run(input_file).unwrap(),
+        2 => day02::run(input_file).unwrap(),
         // Add more days here as needed
         _ => eprintln!("Day {} is not implemented yet.", day_number),
     }

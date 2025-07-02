@@ -1,12 +1,12 @@
 use std::fs::File;
 use std::io::prelude::Read;
 
-pub fn run(input_filename: &str) -> () {
-    let mut file = File::open(input_filename).unwrap();
+pub fn run(input_filename: &str) -> std::io::Result<()> {
+    let mut file = File::open(input_filename)?;
 
     // read file into a string
     let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
+    file.read_to_string(&mut contents)?;
 
     let mut total_fuel = 0u64;
     let mut total_fuel_recursive = 0u64;
@@ -20,6 +20,8 @@ pub fn run(input_filename: &str) -> () {
     }
     println!("{}", total_fuel);
     println!("{}", total_fuel_recursive);
+    
+    Ok(())
 }
 
 fn fuel_mass(mass: u64) -> u64 {
