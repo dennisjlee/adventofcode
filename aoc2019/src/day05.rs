@@ -15,9 +15,15 @@ impl LoggingIOModule {
     }
 }
 
-impl IOModule for LoggingIOModule {
-    fn input(&mut self) -> i32 { self.fixed_input }
+impl Iterator for LoggingIOModule {
+    type Item = i32;
 
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(self.fixed_input)
+    }
+}
+
+impl IOModule for LoggingIOModule {
     fn output(&mut self, value: i32) {
         self.outputs.push(value)
     }

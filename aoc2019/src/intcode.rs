@@ -1,15 +1,19 @@
-pub trait IOModule {
-    fn input(&mut self) -> i32;
+
+pub trait IOModule: Iterator<Item=i32> {
     fn output(&mut self, value: i32);
 }
 
 pub struct NoOpIOModule;
 
-impl IOModule for NoOpIOModule {
-    fn input(&mut self) -> i32 {
-        0 // No-op, returns 0
-    }
+impl Iterator for NoOpIOModule {
+    type Item = i32;
 
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+impl IOModule for NoOpIOModule {
     fn output(&mut self, _value: i32) {
         // No-op, does nothing with the output
     }
@@ -68,7 +72,7 @@ impl IntCode {
                 3 => {
                     // Input
                     let dest = self.memory[ip + 1] as usize;
-                    let input_value = io.input();
+                    let input_value = io.next().expect("Input not provided");
                     self.memory[dest] = input_value;
                     if self.verbose {
                         println!("IP: {ip}; Input ({input_value}) -> loc {dest}");
