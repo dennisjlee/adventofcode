@@ -3,7 +3,7 @@ use std::io::Read;
 
 pub struct LoggingIOModule {
     fixed_input: i32,
-    outputs: Vec<i32>
+    outputs: Vec<i32>,
 }
 
 impl LoggingIOModule {
@@ -15,15 +15,10 @@ impl LoggingIOModule {
     }
 }
 
-impl Iterator for LoggingIOModule {
-    type Item = i32;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl IOModule for LoggingIOModule {
+    fn next_input(&mut self) -> Option<i32> {
         Some(self.fixed_input)
     }
-}
-
-impl IOModule for LoggingIOModule {
     fn output(&mut self, value: i32) {
         self.outputs.push(value)
     }
@@ -41,22 +36,16 @@ pub fn run(input_filename: &str) -> std::io::Result<()> {
     // part 1
     let mut part1_io = LoggingIOModule::new(1);
 
-    let mut intcode = IntCode::new(
-        memory,
-        false,
-    );
+    let mut intcode = IntCode::new(memory, false);
     intcode.run(Some(&mut part1_io));
 
     println!("{}", part1_io.outputs.last().unwrap());
-    
+
     // part 2
     let memory = IntCode::parse_memory(&contents);
 
     let mut part2_io = LoggingIOModule::new(5);
-    let mut intcode = IntCode::new(
-        memory,
-        false,
-    );
+    let mut intcode = IntCode::new(memory, false);
     intcode.run(Some(&mut part2_io));
 
     println!("{}", part2_io.outputs.last().unwrap());

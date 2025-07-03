@@ -1,6 +1,6 @@
 use crate::intcode::{IOModule, IntCode};
-use std::io::Read;
 use itertools::*;
+use std::io::Read;
 
 pub struct SequentialAmplifierIOModule {
     inputs: [i32; 2],
@@ -18,10 +18,8 @@ impl SequentialAmplifierIOModule {
     }
 }
 
-impl Iterator for SequentialAmplifierIOModule {
-    type Item = i32;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl IOModule for SequentialAmplifierIOModule {
+    fn next_input(&mut self) -> Option<i32> {
         if self.input_index < 2 {
             let next_input = self.inputs[self.input_index];
             self.input_index += 1;
@@ -30,9 +28,7 @@ impl Iterator for SequentialAmplifierIOModule {
             None
         }
     }
-}
 
-impl IOModule for SequentialAmplifierIOModule {
     fn output(&mut self, value: i32) {
         self.output = value
     }
