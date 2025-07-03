@@ -1,12 +1,22 @@
 use crate::intcode::{IOModule, IntCode};
 use std::io::Read;
 
-pub struct Day5IOModule {
+pub struct LoggingIOModule {
+    fixed_input: i32,
     outputs: Vec<i32>
 }
 
-impl IOModule for Day5IOModule {
-    fn input(&mut self) -> i32 { 1 }
+impl LoggingIOModule {
+    pub fn new(fixed_input: i32) -> Self {
+        LoggingIOModule {
+            fixed_input,
+            outputs: Vec::new(),
+        }
+    }
+}
+
+impl IOModule for LoggingIOModule {
+    fn input(&mut self) -> i32 { self.fixed_input }
 
     fn output(&mut self, value: i32) {
         self.outputs.push(value)
@@ -22,15 +32,28 @@ pub fn run(input_filename: &str) -> std::io::Result<()> {
 
     let memory = IntCode::parse_memory(&contents);
 
-    let mut io_module = Day5IOModule { outputs: Vec::new() };
+    // part 1
+    let mut part1_io = LoggingIOModule::new(1);
 
     let mut intcode = IntCode::new(
         memory,
         false,
     );
-    intcode.run(Some(&mut io_module));
+    intcode.run(Some(&mut part1_io));
 
-    println!("{}", io_module.outputs.last().unwrap());
+    println!("{}", part1_io.outputs.last().unwrap());
+    
+    // part 2
+    let memory = IntCode::parse_memory(&contents);
+
+    let mut part2_io = LoggingIOModule::new(5);
+    let mut intcode = IntCode::new(
+        memory,
+        false,
+    );
+    intcode.run(Some(&mut part2_io));
+
+    println!("{}", part2_io.outputs.last().unwrap());
 
     Ok(())
 }

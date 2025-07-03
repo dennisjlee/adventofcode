@@ -44,6 +44,7 @@ impl IntCode {
             let opcode = instruction % 100;
             match opcode {
                 1 => {
+                    // Add
                     let a = self.interpret_parameter(ip, 1);
                     let b = self.interpret_parameter(ip, 2);
                     let dest = self.memory[ip + 3] as usize;
@@ -54,6 +55,7 @@ impl IntCode {
                     ip += 4;
                 }
                 2 => {
+                    // Multiply
                     let a = self.interpret_parameter(ip, 1);
                     let b = self.interpret_parameter(ip, 2);
                     let dest = self.memory[ip + 3] as usize;
@@ -64,6 +66,7 @@ impl IntCode {
                     ip += 4;
                 }
                 3 => {
+                    // Input
                     let dest = self.memory[ip + 1] as usize;
                     let input_value = io.input();
                     self.memory[dest] = input_value;
@@ -73,6 +76,7 @@ impl IntCode {
                     ip += 2;
                 }
                 4 => {
+                    // Output
                     let output_value = self.interpret_parameter(ip, 1);
                     io.output(output_value);
                     if self.verbose {
@@ -80,7 +84,61 @@ impl IntCode {
                     }
                     ip += 2;
                 }
-                99 => break,
+                5 => {
+                    // Jump-if-true
+                    let a = self.interpret_parameter(ip, 1);
+                    if a != 0 {
+                        let new_ip = self.interpret_parameter(ip, 2) as usize;
+                        if self.verbose {
+                            println!("IP: {ip}; Jumping to {new_ip} (a == 0)");
+                        }
+                        ip = new_ip;
+                    } else {
+                        if self.verbose {
+                            println!("IP: {ip}; Not jumping (a == {a})");
+                        }
+                        ip += 3;
+                    }
+                }
+                6 => {
+                    // Jump-if-false
+                    let a = self.interpret_parameter(ip, 1);
+                    if a == 0 {
+                        let new_ip = self.interpret_parameter(ip, 2) as usize;
+                        if self.verbose {
+                            println!("IP: {ip}; Jumping to {new_ip} (a == 0)");
+                        }
+                        ip = new_ip;
+                    } else {
+                        if self.verbose {
+                            println!("IP: {ip}; Not jumping (a == {a})");
+                        }
+                        ip += 3;
+                    }
+                }
+                7 => {
+                    // Less than
+                    let a = self.interpret_parameter(ip, 1);
+                    let b = self.interpret_parameter(ip, 2);
+                    let dest = self.memory[ip + 3] as usize;
+                    self.memory[dest] = if a < b { 1 } else { 0 };
+                    if self.verbose {
+                        println!("IP: {ip}; {a} < {b} -> loc {dest} ({})", self.memory[dest]);
+                    }
+                    ip += 4;
+                }
+                8 => {
+                    // Equal
+                    let a = self.interpret_parameter(ip, 1);
+                    let b = self.interpret_parameter(ip, 2);
+                    let dest = self.memory[ip + 3] as usize;
+                    self.memory[dest] = if a == b { 1 } else { 0 };
+                    if self.verbose {
+                        println!("IP: {ip}; {a} == {b} -> loc {dest} ({})", self.memory[dest]);
+                    }
+                    ip += 4;
+                }
+                99 => break, // Halt
                 _ => panic!("Unknown opcode: {}", opcode),
             }
         }
