@@ -26,7 +26,7 @@ pub fn run(input_filename: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-fn execute_program(memory: &Vec<i32>, noun: i32, verb: i32, verbosity: u8) -> i32 {
+fn execute_program(memory: &Vec<i64>, noun: i64, verb: i64, verbosity: u8) -> i64 {
     let mut program = memory.clone();
     program[1] = noun;
     program[2] = verb;

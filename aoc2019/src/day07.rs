@@ -6,13 +6,13 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 
 pub struct SequentialAmplifierIOModule {
-    inputs: [i32; 2],
-    output: i32,
+    inputs: [i64; 2],
+    output: i64,
     input_index: usize,
 }
 
 impl SequentialAmplifierIOModule {
-    pub fn new(inputs: [i32; 2]) -> Self {
+    pub fn new(inputs: [i64; 2]) -> Self {
         SequentialAmplifierIOModule {
             inputs,
             output: -1,
@@ -22,7 +22,7 @@ impl SequentialAmplifierIOModule {
 }
 
 impl IOModule for SequentialAmplifierIOModule {
-    fn next_input(&mut self) -> Option<i32> {
+    fn next_input(&mut self) -> Option<i64> {
         if self.input_index < 2 {
             let next_input = self.inputs[self.input_index];
             self.input_index += 1;
@@ -32,19 +32,19 @@ impl IOModule for SequentialAmplifierIOModule {
         }
     }
 
-    fn output(&mut self, value: i32) {
+    fn output(&mut self, value: i64) {
         self.output = value
     }
 }
 
 pub struct FeedbackLoopAmplifierIOModule {
-    next_input: Option<i32>,
-    output: Option<i32>,
+    next_input: Option<i64>,
+    output: Option<i64>,
     downstream: Option<Rc<RefCell<FeedbackLoopAmplifierIOModule>>>,
 }
 
 impl FeedbackLoopAmplifierIOModule {
-    pub fn new(phase: i32) -> Self {
+    pub fn new(phase: i64) -> Self {
         FeedbackLoopAmplifierIOModule {
             next_input: Some(phase),
             output: None,
@@ -59,19 +59,19 @@ impl FeedbackLoopAmplifierIOModule {
         self.downstream = downstream;
     }
 
-    pub fn set_next_input(&mut self, value: i32) {
+    pub fn set_next_input(&mut self, value: i64) {
         self.next_input = Some(value);
     }
 }
 
 impl IOModule for FeedbackLoopAmplifierIOModule {
-    fn next_input(&mut self) -> Option<i32> {
+    fn next_input(&mut self) -> Option<i64> {
         let val = self.next_input;
         self.next_input = None;
         val
     }
 
-    fn output(&mut self, value: i32) {
+    fn output(&mut self, value: i64) {
         self.output = Some(value);
         if let Some(downstream) = self.downstream.as_mut() {
             downstream.borrow_mut().set_next_input(value);
@@ -111,7 +111,7 @@ pub fn run(input_filename: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-fn run_amplifiers_in_sequence(phases: &Vec<i32>, memory: &Vec<i32>) -> i32 {
+fn run_amplifiers_in_sequence(phases: &Vec<i64>, memory: &Vec<i64>) -> i64 {
     let mut last_output = 0;
     for i in 0..5 {
         let mut io = SequentialAmplifierIOModule::new([phases[i], last_output]);
@@ -122,7 +122,7 @@ fn run_amplifiers_in_sequence(phases: &Vec<i32>, memory: &Vec<i32>) -> i32 {
     last_output
 }
 
-fn run_amplifiers_in_loop(phases: &Vec<i32>, memory: &Vec<i32>) -> i32 {
+fn run_amplifiers_in_loop(phases: &Vec<i64>, memory: &Vec<i64>) -> i64 {
     const LEN: usize = 5;
     assert_eq!(phases.len(), LEN, "Expected exactly 5 phases");
 
