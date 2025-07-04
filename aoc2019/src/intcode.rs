@@ -14,26 +14,30 @@ impl IOModule for NoOpIOModule {
     }
 }
 
+#[derive(PartialEq)]
 pub enum RunState {
+    Init,
     Running,
     Suspended,
-    Stopped,
+    Halted,
 }
 
 pub struct IntCode {
     memory: Vec<i32>,
+    name: String,
+    verbosity: u8,
     ip: usize,
     state: RunState,
-    verbose: bool,
 }
 
 impl IntCode {
-    pub fn new(memory: Vec<i32>, verbose: bool) -> Self {
+    pub fn new(memory: Vec<i32>, name: String, verbosity: u8) -> Self {
         IntCode {
             memory,
+            name,
+            verbosity,
             ip: 0,
-            state: RunState::Stopped,
-            verbose,
+            state: RunState::Init,
         }
     }
 
@@ -46,7 +50,19 @@ impl IntCode {
     }
 
     pub fn run(&mut self, io_module: Option<&mut dyn IOModule>) {
-        self.state = RunState::Running;
+        let name = &self.name;
+
+        match self.state {
+            RunState::Init | RunState::Suspended => {
+                self.state = RunState::Running;
+            }
+            RunState::Running => {
+                panic!("{name}: run requested while already running!")
+            }
+            RunState::Halted => {
+                return;
+            }
+        }
         let io = match io_module {
             Some(module) => module,
             None => &mut NoOpIOModule {},
@@ -62,8 +78,11 @@ impl IntCode {
                     let b = self.interpret_parameter(2);
                     let dest = self.memory[ip + 3] as usize;
                     self.memory[dest] = a + b;
-                    if self.verbose {
-                        println!("IP: {ip}; {a} + {b} -> loc {dest} ({})", self.memory[dest]);
+                    if self.verbosity >= 3 {
+                        println!(
+                            "{name} IP: {ip}; {a} + {b} -> loc {dest} ({})",
+                            self.memory[dest]
+                        );
                     }
                     self.ip += 4;
                 }
@@ -73,8 +92,11 @@ impl IntCode {
                     let b = self.interpret_parameter(2);
                     let dest = self.memory[ip + 3] as usize;
                     self.memory[dest] = a * b;
-                    if self.verbose {
-                        println!("IP: {ip}; {a} * {b} -> loc {dest} ({})", self.memory[dest]);
+                    if self.verbosity >= 3 {
+                        println!(
+                            "{name} IP: {ip}; {a} * {b} -> loc {dest} ({})",
+                            self.memory[dest]
+                        );
                     }
                     self.ip += 4;
                 }
@@ -84,8 +106,8 @@ impl IntCode {
                     match io.next_input() {
                         Some(input_value) => {
                             self.memory[dest] = input_value;
-                            if self.verbose {
-                                println!("IP: {ip}; Input ({input_value}) -> loc {dest}");
+                            if self.verbosity >= 1 {
+                                println!("{name} IP: {ip}; Input ({input_value}) -> loc {dest}");
                             }
                             self.ip += 2;
                         }
@@ -99,8 +121,8 @@ impl IntCode {
                     // Output
                     let output_value = self.interpret_parameter(1);
                     io.output(output_value);
-                    if self.verbose {
-                        println!("IP: {ip}; Output ({output_value})");
+                    if self.verbosity >= 1 {
+                        println!("{name} IP: {ip}; Output ({output_value})");
                     }
                     self.ip += 2;
                 }
@@ -109,13 +131,13 @@ impl IntCode {
                     let a = self.interpret_parameter(1);
                     if a != 0 {
                         let new_ip = self.interpret_parameter(2) as usize;
-                        if self.verbose {
-                            println!("IP: {ip}; Jumping to {new_ip} (a == 0)");
+                        if self.verbosity >= 3 {
+                            println!("{name} IP: {ip}; Jumping to {new_ip} (a == 0)");
                         }
                         self.ip = new_ip;
                     } else {
-                        if self.verbose {
-                            println!("IP: {ip}; Not jumping (a == {a})");
+                        if self.verbosity >= 3 {
+                            println!("{name} IP: {ip}; Not jumping (a == {a})");
                         }
                         self.ip += 3;
                     }
@@ -125,13 +147,13 @@ impl IntCode {
                     let a = self.interpret_parameter(1);
                     if a == 0 {
                         let new_ip = self.interpret_parameter(2) as usize;
-                        if self.verbose {
-                            println!("IP: {ip}; Jumping to {new_ip} (a == 0)");
+                        if self.verbosity >= 3 {
+                            println!("{name} IP: {ip}; Jumping to {new_ip} (a == 0)");
                         }
                         self.ip = new_ip;
                     } else {
-                        if self.verbose {
-                            println!("IP: {ip}; Not jumping (a == {a})");
+                        if self.verbosity >= 3 {
+                            println!("{name} IP: {ip}; Not jumping (a == {a})");
                         }
                         self.ip += 3;
                     }
@@ -142,8 +164,11 @@ impl IntCode {
                     let b = self.interpret_parameter(2);
                     let dest = self.memory[ip + 3] as usize;
                     self.memory[dest] = if a < b { 1 } else { 0 };
-                    if self.verbose {
-                        println!("IP: {ip}; {a} < {b} -> loc {dest} ({})", self.memory[dest]);
+                    if self.verbosity >= 3 {
+                        println!(
+                            "{name} IP: {ip}; {a} < {b} -> loc {dest} ({})",
+                            self.memory[dest]
+                        );
                     }
                     self.ip += 4;
                 }
@@ -153,13 +178,16 @@ impl IntCode {
                     let b = self.interpret_parameter(2);
                     let dest = self.memory[ip + 3] as usize;
                     self.memory[dest] = if a == b { 1 } else { 0 };
-                    if self.verbose {
-                        println!("IP: {ip}; {a} == {b} -> loc {dest} ({})", self.memory[dest]);
+                    if self.verbosity >= 3 {
+                        println!(
+                            "{name} IP: {ip}; {a} == {b} -> loc {dest} ({})",
+                            self.memory[dest]
+                        );
                     }
                     self.ip += 4;
                 }
                 99 => {
-                    self.state = RunState::Stopped;
+                    self.state = RunState::Halted;
                     break;
                 } // Halt
                 _ => panic!("Unknown opcode: {}", opcode),

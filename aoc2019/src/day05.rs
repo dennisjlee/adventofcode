@@ -36,7 +36,7 @@ pub fn run(input_filename: &str) -> std::io::Result<()> {
     // part 1
     let mut part1_io = LoggingIOModule::new(1);
 
-    let mut intcode = IntCode::new(memory, false);
+    let mut intcode = IntCode::new(memory, String::from("day5"), 0);
     intcode.run(Some(&mut part1_io));
 
     println!("{}", part1_io.outputs.last().unwrap());
@@ -45,7 +45,7 @@ pub fn run(input_filename: &str) -> std::io::Result<()> {
     let memory = IntCode::parse_memory(&contents);
 
     let mut part2_io = LoggingIOModule::new(5);
-    let mut intcode = IntCode::new(memory, false);
+    intcode = IntCode::new(memory, String::from("day5"), 0);
     intcode.run(Some(&mut part2_io));
 
     println!("{}", part2_io.outputs.last().unwrap());
