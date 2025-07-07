@@ -41,7 +41,7 @@ impl IOModule for LoggingIOModule {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum RunState {
     Init,
     Running,
