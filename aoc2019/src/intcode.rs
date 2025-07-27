@@ -41,7 +41,7 @@ impl IOModule for LoggingIOModule {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum RunState {
     Init,
     Running,
@@ -49,6 +49,7 @@ pub enum RunState {
     Halted,
 }
 
+#[derive(Clone)]
 pub struct IntCode {
     memory: Vec<i64>,
     name: String,
