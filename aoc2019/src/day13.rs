@@ -37,7 +37,6 @@ struct ArcadeIOModule<'a> {
     output_index: usize,
     score: u32,
     block_count: usize,
-    score_history: Vec<(u32, usize)>,
     moves: Vec<JoystickState>,
     move_index: usize,
     screen: HashMap<Point, u8>,
@@ -62,7 +61,6 @@ impl<'a> ArcadeIOModule<'a> {
             block_count: 0,
             move_index: 0,
             moves,
-            score_history: Vec::new(),
             screen: HashMap::new(),
             verbose,
             stdout,
@@ -74,10 +72,6 @@ impl<'a> ArcadeIOModule<'a> {
 
     pub fn count_tiles(&self, tile_id: u8) -> usize {
         self.screen.values().filter(|&&id| id == tile_id).count()
-    }
-
-    pub fn score_history(&self) -> &[(u32, usize)] {
-        &self.score_history
     }
 
     fn initialize(&mut self) -> io::Result<()> {
@@ -180,7 +174,6 @@ impl IOModule for ArcadeIOModule<'_> {
                 // Special case for the score output
                 self.score = self.output_buffer[2] as u32;
                 self.block_count = self.count_tiles(2);
-                self.score_history.push((self.score, self.count_tiles(2)));
                 if self.verbose {
                     println!(
                         "Updated score: {}, {} blocks left",
