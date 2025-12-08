@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import sys
-import heapq
 from math import prod, sqrt
 from pathlib import Path
-from typing import cast, Literal, NamedTuple
+from typing import NamedTuple
 
 
 class Point3D(NamedTuple):
@@ -27,51 +26,32 @@ def main():
     with Path(sys.argv[1]).open() as f:
         points = [Point3D.parse(line) for line in f.readlines()]
 
-
-    heap1: list[tuple[float, Point3D, Point3D]] = []
-    heap2: list[tuple[float, Point3D, Point3D]] = []
+    distances: list[tuple[float, Point3D, Point3D]] = []
     for i, p1 in enumerate(points):
         for p2 in points[i+1:]:
             distance = p1.euclidean_distance(p2)
-            heap_item1 = (-distance, p1, p2)
-            if len(heap1) < 1000:
-                heapq.heappush(heap1, heap_item1)
-            else:
-                heapq.heappushpop(heap1, heap_item1)
-            heap_item2 = (distance, p1, p2)
-            heapq.heappush(heap2, heap_item2)
+            distances.append((distance, p1, p2))
+    distances.sort()
 
-    assert len(heap1) == 1000
-    clusters1 = {p: frozenset([p]) for p in points}
-    for _distance, p1, p2 in heap1:
-        set1 = clusters1[p1]
-        set2 = clusters1[p2]
-        if set1 is set2:
-            continue
+    clusters = {p: frozenset([p]) for p in points}
+    for i, (_distance, p1, p2) in enumerate(distances):
+        set1 = clusters[p1]
+        set2 = clusters[p2]
 
-        merged = set1 | set2
-        for p in merged:
-            clusters1[p] = merged
+        if set1 is not set2:
+            merged = set1 | set2
+            for p in merged:
+                clusters[p] = merged
 
-    sorted_clusters = sorted(set(clusters1.values()), key=len, reverse=True)
-    print(prod(len(sorted_clusters[i]) for i in range(3)))
+            if len(merged) == len(points):
+                # Part 2
+                print(p1.x * p2.x)
+                break
 
-    assert len(heap2) == len(points) * (len(points) - 1) // 2
-    clusters2 = {p: frozenset([p]) for p in points}
-    while len(heap2):
-        _distance, p1, p2 = heapq.heappop(heap2)
-        set1 = clusters2[p1]
-        set2 = clusters2[p2]
-        if set1 is set2:
-            continue
-
-        merged = set1 | set2
-        for p in merged:
-            clusters2[p] = merged
-
-        if len(merged) == len(points):
-            print(p1.x * p2.x)
-            break
+        if i == 999:
+            # Part 1
+            sorted_clusters = sorted(set(clusters.values()), key=len, reverse=True)
+            print(prod(len(sorted_clusters[i]) for i in range(3)))
 
 
 if __name__ == "__main__":
